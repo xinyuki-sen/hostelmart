@@ -1,0 +1,27 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing & Cache
+/coverage
+/.next/
+/out/
+/build
+
+# Environment Variables (CRITICAL FOR SECURITY)
+.env
+.env*.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Vercel
+.vercel
+
+# Operating System
+.DS_Store
+*.pem
+Thumbs.db
