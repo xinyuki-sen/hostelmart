@@ -1,133 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { Listing, ISORequest } from '@/types';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
+import { 
+  getStoredListings, 
+  getStoredISORequests, 
+  createISORequest,
+  subscribeToStore,
+  SEED_LISTINGS,
+  SEED_ISO 
+} from '@/lib/dataStore';
 
-const INITIAL_LISTINGS: Listing[] = [
-  {
-    id: "101",
-    sellerId: "u-1",
-    sellerName: "rahul_k",
-    sellerPhone: "9876543210",
-    hostelBlock: "Block B",
-    roomNumber: "304",
-    title: "Havells 1.2L Electric Kettle (Quick Boil)",
-    description: "Heats 1.2L of water in under 2 minutes. Auto-cut off works properly. Perfect for late-night Maggi, coffee, and green tea in the room.",
-    price: 450,
-    isNegotiable: true,
-    isUrgent: true,
-    condition: "Gently Used",
-    category: "room_essentials",
-    images: [
-      "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1585338107529-13afc5f02586?auto=format&fit=crop&w=600&q=80"
-    ],
-    status: "active",
-    isLiked: false,
-    timeAgo: "25m ago",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "102",
-    sellerId: "u-2",
-    sellerName: "aditya_m",
-    sellerPhone: "9876543211",
-    hostelBlock: "Block A",
-    roomNumber: "112",
-    title: "Hercules 21-Speed Mountain Bicycle",
-    description: "Dual disk brakes with front suspension. Recently serviced with new tire tubes. Includes free cycle cable lock.",
-    price: 2400,
-    isNegotiable: true,
-    isUrgent: false,
-    condition: "Like New",
-    category: "mobility_fitness",
-    images: [
-      "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?auto=format&fit=crop&w=600&q=80"
-    ],
-    status: "active",
-    isLiked: false,
-    timeAgo: "2h ago",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "103",
-    sellerId: "u-3",
-    sellerName: "vikram_t",
-    sellerPhone: "9876543212",
-    hostelBlock: "Block C",
-    roomNumber: "201",
-    title: "GATE CSE Reference Books (Set of 6)",
-    description: "Contains Cormen Algorithms, Tanenbaum Computer Networks, and Galvin Operating Systems. Free handwritten notes included.",
-    price: 750,
-    isNegotiable: false,
-    isUrgent: false,
-    condition: "Well Used",
-    category: "books_academics",
-    images: [
-      "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=600&q=80"
-    ],
-    status: "active",
-    isLiked: false,
-    timeAgo: "Yesterday",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "104",
-    sellerId: "u-4",
-    sellerName: "kartik_p",
-    sellerPhone: "9876543213",
-    hostelBlock: "Block B",
-    roomNumber: "410",
-    title: "Plastic Clothes Hangers (Set of 10)",
-    description: "Graduating this weekend! Giving away 10 sturdy hangers and laundry mesh for free. First come, first served.",
-    price: 0,
-    isNegotiable: false,
-    isUrgent: true,
-    condition: "Gently Used",
-    category: "room_essentials",
-    images: [
-      "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=600&q=80"
-    ],
-    status: "active",
-    isLiked: false,
-    timeAgo: "3h ago",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
-
-const INITIAL_ISO: ISORequest[] = [
-  {
-    id: "iso-1",
-    requesterId: "u-1",
-    requesterName: "rahul_k",
-    requesterPhone: "9876543210",
-    title: "Casio fx-991EX Scientific Calculator",
-    budget: 500,
-    location: "Block B, Room 214",
-    urgency: "Tonight before 10 PM (Maths Exam tomorrow)",
-    status: "active",
-    createdAt: "40m ago"
-  },
-  {
-    id: "iso-2",
-    requesterId: "u-5",
-    requesterName: "manish_s",
-    requesterPhone: "9876543211",
-    title: "Engineering Mini Drafter & Clips",
-    budget: 250,
-    location: "Block A, Room 105",
-    urgency: "Needed for Engineering Drawing practicals",
-    status: "active",
-    createdAt: "3h ago"
-  }
-];
+const INITIAL_LISTINGS: Listing[] = SEED_LISTINGS;
+const INITIAL_ISO: ISORequest[] = SEED_ISO;
 
 interface UserState {
   username: string;
@@ -139,7 +26,7 @@ interface UserState {
 export default function HomePage() {
   const [user, setUser] = useState<UserState | null>(null);
   const [listings, setListings] = useState<Listing[]>(INITIAL_LISTINGS);
-  const [isoRequests] = useState<ISORequest[]>(INITIAL_ISO);
+  const [isoRequests, setIsoRequests] = useState<ISORequest[]>(INITIAL_ISO);
   const [mode, setMode] = useState<'market' | 'iso'>('market');
   const [category, setCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -149,7 +36,22 @@ export default function HomePage() {
   const [carouselIndex, setCarouselIndex] = useState<number>(0);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Check login state
+  // ISO Form State
+  const [showIsoModal, setShowIsoModal] = useState(false);
+  const [isoTitle, setIsoTitle] = useState('');
+  const [isoBudget, setIsoBudget] = useState('300');
+  const [isoUrgency, setIsoUrgency] = useState('Tonight before 10 PM');
+
+  const loadData = useCallback(async () => {
+    const [l, iso] = await Promise.all([
+      getStoredListings(),
+      getStoredISORequests()
+    ]);
+    setListings(l);
+    setIsoRequests(iso);
+  }, []);
+
+  // Check login state and live data subscription
   useEffect(() => {
     try {
       const stored = localStorage.getItem('hostelmart_user');
@@ -159,7 +61,14 @@ export default function HomePage() {
     } catch {
       // ignore
     }
-  }, []);
+
+    loadData();
+    const unsubscribe = subscribeToStore(() => {
+      loadData();
+    });
+
+    return () => unsubscribe();
+  }, [loadData]);
 
   const handleLogout = () => {
     localStorage.removeItem('hostelmart_user');
@@ -170,6 +79,25 @@ export default function HomePage() {
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2500);
+  };
+
+  const handleCreateIso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isoTitle.trim()) {
+      showToast('Please enter the item you need.');
+      return;
+    }
+    await createISORequest({
+      title: isoTitle.trim(),
+      budget: Number(isoBudget) || 0,
+      location: `${user?.hostelBlock || 'Block B'}, Rm ${user?.roomNumber || '304'}`,
+      urgency: isoUrgency.trim() || 'Urgent',
+      requesterName: user?.username || 'rahul_k',
+      requesterPhone: '9876543210'
+    });
+    showToast('🎉 Wanted request posted live to ISO Board!');
+    setShowIsoModal(false);
+    setIsoTitle('');
   };
 
   const toggleHeart = (id: string, e: React.MouseEvent) => {
@@ -331,9 +259,15 @@ export default function HomePage() {
                 : 'Items requested by hostel residents. Have one? Contact them directly!'}
             </p>
           </div>
-          <Link href="/sell" className="btn btn-primary">
-            <span>➕ Post an Item</span>
-          </Link>
+          {mode === 'market' ? (
+            <Link href="/sell" className="btn btn-primary">
+              <span>➕ Post an Item</span>
+            </Link>
+          ) : (
+            <button className="btn btn-primary" onClick={() => setShowIsoModal(true)}>
+              <span>➕ Post Wanted Request</span>
+            </button>
+          )}
         </div>
 
         {/* Mode Switcher Tabs */}
@@ -664,6 +598,57 @@ export default function HomePage() {
                 </a>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ISO REQUEST CREATION MODAL */}
+      {showIsoModal && (
+        <div className="modal-overlay" onClick={() => setShowIsoModal(false)}>
+          <div className="modal-card" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>🔍 Post Wanted (ISO) Request</h2>
+              <button className="modal-close" onClick={() => setShowIsoModal(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleCreateIso} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }}>
+              <div className="form-group">
+                <label className="form-label">Item Needed</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  required 
+                  placeholder="e.g. Casio fx-991EX Calculator or Table Fan" 
+                  value={isoTitle} 
+                  onChange={(e) => setIsoTitle(e.target.value)} 
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Budget Willing to Pay (₹)</label>
+                <input 
+                  type="number" 
+                  className="form-input" 
+                  required 
+                  min="0" 
+                  placeholder="₹" 
+                  value={isoBudget} 
+                  onChange={(e) => setIsoBudget(e.target.value)} 
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Urgency / Timeline</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  required 
+                  placeholder="e.g. Tonight before 10 PM (Exam tomorrow)" 
+                  value={isoUrgency} 
+                  onChange={(e) => setIsoUrgency(e.target.value)} 
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ padding: 12, marginTop: 8 }}>
+                🚀 Post to Wanted Board
+              </button>
+            </form>
           </div>
         </div>
       )}

@@ -1,76 +1,27 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { generateResearchCsv, downloadCsvFile } from '@/lib/exportCsv';
 import type { Listing } from '@/types';
+import { 
+  getStoredListings, 
+  updateListingStatus, 
+  updateListingAdminNote, 
+  subscribeToStore 
+} from '@/lib/dataStore';
 
 export default function AdminHubPage() {
   const [isAdminAuth, setIsAdminAuth] = useState(false);
   const [passphrase, setPassphrase] = useState('');
   const [authError, setAuthError] = useState(false);
-
-  const [adminListings, setAdminListings] = useState<Listing[]>([
-    {
-      id: "101",
-      sellerId: "u-1",
-      sellerName: "rahul_k",
-      sellerPhone: "9876543210",
-      hostelBlock: "Block B",
-      roomNumber: "304",
-      title: "Havells 1.2L Electric Kettle (Quick Boil)",
-      description: "Heats 1.2L in 2 mins.",
-      price: 450,
-      isNegotiable: true,
-      condition: "Gently Used",
-      category: "room_essentials",
-      images: ["https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80"],
-      status: "active",
-      adminNote: "High demand during winter semester. Sold within 24h usually.",
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-      updatedAt: new Date().toISOString()
-    },
-    {
-      id: "102",
-      sellerId: "u-2",
-      sellerName: "aditya_m",
-      sellerPhone: "9876543211",
-      hostelBlock: "Block A",
-      roomNumber: "112",
-      title: "Hercules 21-Speed Mountain Bicycle",
-      description: "Dual disk brakes with front suspension.",
-      price: 2400,
-      isNegotiable: true,
-      condition: "Like New",
-      category: "mobility_fitness",
-      images: ["https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=600&q=80"],
-      status: "active",
-      adminNote: "Original purchase receipt included. Very good condition.",
-      createdAt: new Date(Date.now() - 172800000).toISOString(),
-      updatedAt: new Date().toISOString()
-    },
-    {
-      id: "105",
-      sellerId: "u-5",
-      sellerName: "siddharth_r",
-      sellerPhone: "9876543214",
-      hostelBlock: "Block D",
-      roomNumber: "108",
-      title: "Krups 2-Slice Bread Toaster (Clean)",
-      description: "Hardly used for 2 months.",
-      price: 600,
-      isNegotiable: true,
-      condition: "Like New",
-      category: "room_essentials",
-      images: ["https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=600&q=80"],
-      status: "pending",
-      adminNote: "Check electrical heating element compliance.",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-  ]);
-
+  const [adminListings, setAdminListings] = useState<Listing[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const loadListings = useCallback(async () => {
+    const data = await getStoredListings();
+    setAdminListings(data);
+  }, []);
 
   useEffect(() => {
     try {
@@ -84,7 +35,14 @@ export default function AdminHubPage() {
     } catch {
       // ignore
     }
-  }, []);
+
+    loadListings();
+    const unsubscribe = subscribeToStore(() => {
+      loadListings();
+    });
+
+    return () => unsubscribe();
+  }, [loadListings]);
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,23 +60,18 @@ export default function AdminHubPage() {
     setTimeout(() => setToastMsg(null), 2500);
   };
 
-  const handleDecision = (id: string, newStatus: 'active' | 'rejected') => {
-    setAdminListings(prev => prev.map(item => {
-      if (item.id === id) {
-        showToast(newStatus === 'active' ? `Approved "${item.title}" for Live Feed` : `Rejected "${item.title}"`);
-        return { ...item, status: newStatus };
-      }
-      return item;
-    }));
+  const handleDecision = async (id: string, newStatus: 'active' | 'rejected') => {
+    const target = adminListings.find(i => i.id === id);
+    const updated = await updateListingStatus(id, newStatus);
+    setAdminListings(updated);
+    showToast(newStatus === 'active' 
+      ? `✓ Approved "${target?.title || 'Listing'}"! Published live to Campus Marketplace.` 
+      : `✕ Rejected "${target?.title || 'Listing'}". Hidden from Marketplace.`);
   };
 
-  const updateNote = (id: string, note: string) => {
-    setAdminListings(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, adminNote: note };
-      }
-      return item;
-    }));
+  const updateNote = async (id: string, note: string) => {
+    const updated = await updateListingAdminNote(id, note);
+    setAdminListings(updated);
     showToast('Admin note saved.');
   };
 

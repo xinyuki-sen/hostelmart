@@ -79,3 +79,21 @@ export async function compressImage(
     reader.readAsDataURL(file);
   });
 }
+
+/**
+ * Compresses an image and converts it directly to a base64 Data URL
+ * Enables persistent storage and immediate zero-latency cross-tab rendering
+ */
+export async function compressImageToBase64(
+  file: File,
+  options: CompressOptions = {}
+): Promise<string> {
+  const blob = await compressImage(file, options);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Failed to convert compressed blob to Data URL'));
+    reader.readAsDataURL(blob);
+  });
+}
+

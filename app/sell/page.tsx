@@ -1,14 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { compressImage } from '@/lib/compression';
+import { compressImageToBase64 } from '@/lib/compression';
+import { createListing } from '@/lib/dataStore';
 
 export default function SellPage() {
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<{ id?: string; username?: string; phone?: string; hostelBlock?: string; roomNumber?: string } | null>(null);
+
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('room_essentials');
+  const [category, setCategory] = useState<'room_essentials' | 'electronics' | 'books_academics' | 'mobility_fitness' | 'clothing_fashion' | 'other'>('room_essentials');
   const [condition, setCondition] = useState<'Like New' | 'Gently Used' | 'Well Used'>('Gently Used');
   const [price, setPrice] = useState<number | string>(450);
   const [hostelBlock, setHostelBlock] = useState('Block B');
@@ -23,7 +26,22 @@ export default function SellPage() {
     "https://images.unsplash.com/photo-1585338107529-13afc5f02586?auto=format&fit=crop&w=600&q=80"
   ]);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('hostelmart_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        setCurrentUser(u);
+        if (u.hostelBlock) setHostelBlock(u.hostelBlock);
+        if (u.roomNumber) setRoomNumber(u.roomNumber);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -41,10 +59,9 @@ export default function SellPage() {
           showToast('Maximum 4 photos allowed per listing.');
           break;
         }
-        // Client-side silent compression
-        const compressedBlob = await compressImage(file, { maxWidth: 1200, quality: 0.75 });
-        const localPreviewUrl = URL.createObjectURL(compressedBlob);
-        setPhotos(prev => [...prev, localPreviewUrl]);
+        // Client-side silent WebP auto-compression
+        const base64Url = await compressImageToBase64(file, { maxWidth: 1000, quality: 0.72 });
+        setPhotos(prev => [...prev, base64Url]);
       }
       showToast('⚡ Photos compressed silently (10MB ➔ ~120KB WebP)');
     } catch (err: unknown) {
@@ -63,12 +80,44 @@ export default function SellPage() {
     setPhotos(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    showToast('🚀 Listing submitted! Sent to AdminA for approval.');
-    setTimeout(() => {
-      router.push('/');
-    }, 1500);
+    if (!title.trim()) {
+      showToast('Please enter an item title.');
+      return;
+    }
+    if (photos.length === 0) {
+      showToast('At least 1 item photo is required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createListing({
+        title: title.trim(),
+        category,
+        condition,
+        price: Number(price) || 0,
+        hostelBlock,
+        roomNumber,
+        description: description.trim() || 'No description provided.',
+        isNegotiable,
+        isUrgent,
+        images: photos,
+        sellerName: currentUser?.username || 'rahul_k',
+        sellerPhone: currentUser?.phone || '9876543210',
+        sellerId: currentUser?.id || 'u-local'
+      });
+
+      showToast('🚀 Listing submitted! Successfully queued in Supervisor Moderation Hub.');
+      setTimeout(() => {
+        router.push('/');
+      }, 1200);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to submit listing';
+      showToast(message);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -135,7 +184,7 @@ export default function SellPage() {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Category</label>
-                <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
+                <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value as any)}>
                   <option value="room_essentials">🛏️ Room Essentials</option>
                   <option value="electronics">⚡ Electronics</option>
                   <option value="books_academics">📚 Books & Notes</option>

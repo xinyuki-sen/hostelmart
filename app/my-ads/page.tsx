@@ -1,65 +1,63 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { Listing } from '@/types';
+import { 
+  getStoredListings, 
+  toggleSoldStatus, 
+  deleteListing, 
+  subscribeToStore 
+} from '@/lib/dataStore';
 
 export default function MyAdsPage() {
-  const [userListings, setUserListings] = useState<Listing[]>([
-    {
-      id: "101",
-      sellerId: "u-1",
-      sellerName: "rahul_k",
-      sellerPhone: "9876543210",
-      hostelBlock: "Block B",
-      roomNumber: "304",
-      title: "Havells 1.2L Electric Kettle (Quick Boil)",
-      description: "Heats 1.2L of water in under 2 minutes.",
-      price: 450,
-      isNegotiable: true,
-      condition: "Gently Used",
-      category: "room_essentials",
-      images: ["https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80"],
-      status: "active",
-      createdAt: "Yesterday",
-      updatedAt: "Yesterday"
-    },
-    {
-      id: "106",
-      sellerId: "u-1",
-      sellerName: "rahul_k",
-      sellerPhone: "9876543210",
-      hostelBlock: "Block B",
-      roomNumber: "304",
-      title: "High-Speed Desk Table Fan with Clamp",
-      description: "Quiet and powerful motor.",
-      price: 350,
-      isNegotiable: false,
-      condition: "Gently Used",
-      category: "room_essentials",
-      images: ["https://images.unsplash.com/photo-1585338107529-13afc5f02586?auto=format&fit=crop&w=600&q=80"],
-      status: "sold",
-      createdAt: "3 days ago",
-      updatedAt: "Yesterday"
-    }
-  ]);
-
+  const [userListings, setUserListings] = useState<Listing[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const loadListings = useCallback(async () => {
+    const all = await getStoredListings();
+    let currentUsername = 'rahul_k';
+    try {
+      const stored = localStorage.getItem('hostelmart_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u.username) currentUsername = u.username;
+      }
+    } catch {}
+
+    // Match by current username or show active user items
+    const matching = all.filter(item => 
+      item.sellerName.toLowerCase() === currentUsername.toLowerCase()
+    );
+
+    setUserListings(matching.length > 0 ? matching : all.slice(0, 3));
+  }, []);
+
+  useEffect(() => {
+    loadListings();
+    const unsubscribe = subscribeToStore(() => {
+      loadListings();
+    });
+    return () => unsubscribe();
+  }, [loadListings]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2500);
   };
 
-  const toggleSold = (id: string, isSold: boolean) => {
-    setUserListings(prev => prev.map(item => {
-      if (item.id === id) {
-        const nextStatus = isSold ? 'sold' : 'active';
-        showToast(isSold ? 'Item marked as SOLD! Exited live feed.' : 'Item re-activated on feed.');
-        return { ...item, status: nextStatus };
-      }
-      return item;
-    }));
+  const handleToggleSold = async (id: string) => {
+    const nextStatus = await toggleSoldStatus(id);
+    showToast(nextStatus === 'sold' ? 'Item marked as SOLD! Updated on live marketplace feed.' : 'Item re-activated on marketplace feed.');
+    loadListings();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this listing?')) {
+      await deleteListing(id);
+      showToast('Item deleted successfully.');
+      loadListings();
+    }
   };
 
   return (
@@ -99,7 +97,7 @@ export default function MyAdsPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <span style={{ fontSize: '0.82rem', fontWeight: 600, color: isSold ? '#34d399' : 'var(--text-muted)' }}>
                     {isSold ? 'Sold Out ✓' : 'Active'}
                   </span>
@@ -107,7 +105,7 @@ export default function MyAdsPage() {
                     <input 
                       type="checkbox" 
                       checked={isSold} 
-                      onChange={(e) => toggleSold(item.id, e.target.checked)} 
+                      onChange={() => handleToggleSold(item.id)} 
                       style={{ opacity: 0, width: 0, height: 0 }}
                     />
                     <span style={{
@@ -121,6 +119,14 @@ export default function MyAdsPage() {
                       }}></span>
                     </span>
                   </label>
+                  <button 
+                    type="button" 
+                    onClick={() => handleDelete(item.id)}
+                    style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#f87171', borderRadius: 6, padding: '4px 8px', fontSize: '0.8rem', cursor: 'pointer' }}
+                    title="Delete item"
+                  >
+                    🗑️
+                  </button>
                 </div>
               </div>
             );
