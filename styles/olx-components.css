@@ -1,0 +1,193 @@
+/* ====================================================================
+   CAMPUSMART OLX-INSPIRED UI COMPONENTS
+   Bottom Navigation, Floating Sell Button, Wishlist Hearts & Meta Tags
+   ==================================================================== */
+
+/* Sticky Mobile Bottom Navigation (OLX Style) */
+.olx-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 1000;
+  padding: 0 12px;
+}
+
+.olx-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  width: 60px;
+}
+
+.olx-nav-item:hover,
+.olx-nav-item.active {
+  color: var(--accent-primary);
+}
+
+.olx-nav-icon {
+  font-size: 1.25rem;
+}
+
+/* Iconic Floating Sell Button */
+.olx-sell-btn-container {
+  position: relative;
+  top: -14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+}
+
+.olx-sell-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border: 3px solid #111827;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  transition: transform var(--transition-smooth), box-shadow var(--transition-smooth);
+}
+
+.olx-sell-btn:hover {
+  transform: scale(1.08) translateY(-2px);
+  box-shadow: 0 12px 25px rgba(59, 130, 246, 0.55);
+}
+
+.olx-sell-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #60a5fa;
+  margin-top: 2px;
+}
+
+/* Horizontal Category Chips Bar */
+.category-scroll-bar {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 12px 4px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.category-scroll-bar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.category-chip:hover,
+.category-chip.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+/* Wishlist Heart Button on Card */
+.card-heart-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 1rem;
+  transition: transform var(--transition-fast), color var(--transition-fast);
+  z-index: 2;
+}
+
+.card-heart-btn:hover {
+  transform: scale(1.15);
+  color: #f43f5e;
+}
+
+.card-heart-btn.liked {
+  color: #f43f5e;
+  background: rgba(244, 63, 94, 0.2);
+}
+
+/* Location and Relative Time Badges on Cards */
+.card-location-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.card-location-row span.bullet {
+  opacity: 0.5;
+}
+
+/* Safety Tip Box (Product Detail Page) */
+.safety-box {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 16px 0;
+}
+
+.safety-box-icon {
+  font-size: 1.3rem;
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+.safety-box-text {
+  font-size: 0.85rem;
+  color: #93c5fd;
+  line-height: 1.45;
+}
