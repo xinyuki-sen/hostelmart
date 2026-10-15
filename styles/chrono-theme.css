@@ -1,7 +1,6 @@
 /* ====================================================================
-   CAMPUSMART — REFINED CHRONO HYBRID DESIGN SYSTEM
-   Dark Slate (#080c14 / #0b0f17), 4:3 Image Ratio, Product Detail Sheet,
-   Thumbnail Preview Grid, ISO Board, High-Contrast Typography
+   HOSTELMART — CHRONO HYBRID DESIGN SYSTEM (CLEAN & POLISHED)
+   Zero Ugly Scrollbars, Crisp Spacing, No Overlaps, High Contrast
    ==================================================================== */
 
 :root {
@@ -16,10 +15,10 @@
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-focus: #3b82f6;
 
-  /* High-Contrast Typography (WCAG AAA compliant) */
+  /* High Contrast Typography */
   --text-main: #f8fafc;
-  --text-muted: #cbd5e1;       /* Boosted from dark grey for clarity */
-  --text-dim: #94a3b8;         /* High visibility secondary */
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
 
   --accent-blue: #3b82f6;
   --accent-blue-glow: rgba(59, 130, 246, 0.25);
@@ -28,7 +27,6 @@
   --accent-rose: #f43f5e;
   --accent-purple: #a855f7;
   --accent-wa: #25d366;
-  --accent-wa-hover: #1ebd5a;
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --radius-sm: 8px;
@@ -52,9 +50,26 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Subtle Modern Scrollbars (Removes Ugly Default Grey Bars) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Master 3-Column Dashboard Container */
 .chrono-layout {
   display: flex;
-  height: calc(100vh - 36px);
+  height: 100vh;
   width: 100vw;
   overflow: hidden;
   background-color: var(--bg-app);
@@ -62,9 +77,9 @@ body {
 
 /* 1. Left Sidebar */
 .chrono-sidebar {
-  width: 260px;
+  width: 250px;
   flex-shrink: 0;
-  height: 100%;
+  height: 100vh;
   background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-sidebar);
   display: flex;
@@ -93,12 +108,11 @@ body {
   color: #60a5fa;
   border: 1px solid rgba(59, 130, 246, 0.3);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 16px 12px;
+  padding: 14px 10px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -106,12 +120,12 @@ body {
 }
 
 .nav-section-title {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 10px 12px 4px 12px;
+  padding: 10px 10px 4px 10px;
 }
 
 .chrono-nav-btn {
@@ -124,10 +138,11 @@ body {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
+  text-decoration: none;
 }
 
 .chrono-nav-btn:hover {
@@ -148,20 +163,13 @@ body {
   justify-content: space-between;
   padding: 6px 12px;
   border-radius: 6px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--text-dim);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.wing-item:hover {
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.03);
 }
 
 .status-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
 }
 
@@ -217,9 +225,9 @@ body {
 /* 2. Main Center Feed */
 .chrono-main {
   flex: 1;
-  height: 100%;
+  height: 100vh;
   overflow-y: auto;
-  padding: 24px 28px 100px 28px;
+  padding: 24px 30px 100px 30px;
   display: flex;
   flex-direction: column;
 }
@@ -228,7 +236,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   gap: 16px;
 }
 
@@ -240,16 +248,16 @@ body {
 }
 
 .feed-subtitle {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-dim);
   margin-top: 2px;
 }
 
-/* Mode Switch Tabs (For Sale vs. Looking For ISO) */
+/* Mode Switch Tabs */
 .market-mode-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   background: var(--bg-card);
   padding: 4px;
   border-radius: var(--radius-sm);
@@ -260,7 +268,7 @@ body {
 .market-mode-btn {
   padding: 6px 16px;
   border-radius: 6px;
-  font-size: 0.83rem;
+  font-size: 0.82rem;
   font-weight: 600;
   background: transparent;
   border: none;
@@ -275,11 +283,12 @@ body {
   box-shadow: 0 2px 8px var(--accent-blue-glow);
 }
 
-/* Controls Row: Search + Sort Dropdown */
+/* Controls: Search + Sort */
 .controls-row {
   display: flex;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
+  align-items: center;
 }
 
 .search-input-wrap {
@@ -303,13 +312,14 @@ body {
   border-color: var(--accent-blue);
 }
 
-/* Category Filter Row */
+/* Category Filter Row (No overlapping!) */
 .chrono-filter-row {
   display: flex;
   gap: 8px;
   overflow-x: auto;
   padding: 4px 0 16px 0;
   scrollbar-width: none;
+  margin-bottom: 8px;
 }
 
 .chrono-filter-row::-webkit-scrollbar {
@@ -349,11 +359,11 @@ body {
   border-color: var(--accent-emerald);
 }
 
-/* Product Cards Grid: Natural 4:3 Ratio, Tap-to-View */
+/* Product Cards Grid: Natural 4:3 Ratio */
 .chrono-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
 }
 
 .chrono-card {
@@ -369,12 +379,11 @@ body {
 }
 
 .chrono-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   border-color: rgba(59, 130, 246, 0.45);
   box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.7);
 }
 
-/* Natural 4:3 Image Ratio (Does not clip tall items) */
 .chrono-card-img-wrap {
   position: relative;
   width: 100%;
@@ -394,12 +403,11 @@ body {
   transform: scale(1.05);
 }
 
-/* Photo Counter Badge (e.g. 📷 3) */
 .photo-count-badge {
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(11, 15, 23, 0.75);
+  background: rgba(11, 15, 23, 0.8);
   backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #fff;
@@ -413,7 +421,6 @@ body {
   z-index: 2;
 }
 
-/* Urgent / Move-Out Ribbon */
 .urgent-banner {
   position: absolute;
   top: 0;
@@ -421,7 +428,7 @@ body {
   right: 0;
   background: linear-gradient(90deg, #ef4444, #f97316);
   color: #fff;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-align: center;
   padding: 3px 0;
@@ -430,7 +437,7 @@ body {
 }
 
 .chrono-card-body {
-  padding: 14px 16px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
@@ -455,7 +462,7 @@ body {
 }
 
 .card-title {
-  font-size: 0.95rem;
+  font-size: 0.93rem;
   font-weight: 600;
   color: var(--text-main);
   line-height: 1.35;
@@ -473,7 +480,6 @@ body {
   margin-top: 2px;
 }
 
-/* Subtle Card Tap Hint */
 .card-tap-hint {
   margin-top: auto;
   padding-top: 8px;
@@ -485,9 +491,55 @@ body {
   color: var(--text-dim);
 }
 
-/* 3. Product Detail Sheet / Modal (Rich Lightbox) */
+/* 3. Right Sidebar (Chrono Trending Insights) */
+.chrono-right-drawer {
+  width: 280px;
+  flex-shrink: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-left: 1px solid var(--border-sidebar);
+  background: var(--bg-sidebar);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.insights-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.insights-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.trending-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.82rem;
+}
+
+.trending-item:last-child {
+  border-bottom: none;
+}
+
+/* Product Detail Sheet Modal */
 .product-detail-modal {
-  max-width: 720px;
+  max-width: 700px;
   padding: 0;
   overflow: hidden;
 }
@@ -555,7 +607,7 @@ body {
 }
 
 .detail-content-body {
-  padding: 24px;
+  padding: 22px;
   max-height: 50vh;
   overflow-y: auto;
 }
@@ -569,105 +621,6 @@ body {
   align-items: center;
   justify-content: space-between;
   margin: 16px 0;
-}
-
-/* 4. Interactive Thumbnail Preview Grid in Sell Modal */
-.thumbnail-preview-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.thumb-preview-item {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border-subtle);
-  background: #000;
-}
-
-.thumb-preview-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.thumb-delete-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(239, 68, 68, 0.9);
-  color: #fff;
-  border: none;
-  font-size: 11px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.thumb-cover-tag {
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  background: rgba(11, 15, 23, 0.85);
-  color: #60a5fa;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
-}
-
-/* 5. Right Sidebar (Chrono Trending Insights) */
-.chrono-right-drawer {
-  width: 300px;
-  flex-shrink: 0;
-  height: 100%;
-  overflow-y: auto;
-  border-left: 1px solid var(--border-sidebar);
-  background: var(--bg-sidebar);
-  padding: 22px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.insights-box {
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-md);
-  padding: 16px;
-}
-
-.insights-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-  margin-bottom: 12px;
-}
-
-.trending-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 0.82rem;
-}
-
-.trending-item:last-child {
-  border-bottom: none;
 }
 
 /* Mobile Breakpoints */

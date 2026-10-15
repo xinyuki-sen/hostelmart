@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { generateResearchCsv, downloadCsvFile } from '@/lib/exportCsv';
 import type { Listing } from '@/types';
 
 export default function AdminHubPage() {
+  const [isAdminAuth, setIsAdminAuth] = useState(false);
+  const [passphrase, setPassphrase] = useState('');
+  const [authError, setAuthError] = useState(false);
+
   const [adminListings, setAdminListings] = useState<Listing[]>([
     {
       id: "101",
@@ -68,6 +72,31 @@ export default function AdminHubPage() {
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('hostelmart_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u.role === 'admin') {
+          setIsAdminAuth(true);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passphrase === '123456' || passphrase === 'AdminPass@2026!') {
+      setIsAdminAuth(true);
+      setAuthError(false);
+      localStorage.setItem('hostelmart_user', JSON.stringify({ role: 'admin', username: 'AdminA' }));
+    } else {
+      setAuthError(true);
+    }
+  };
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2500);
@@ -100,6 +129,51 @@ export default function AdminHubPage() {
   };
 
   const pendingItems = adminListings.filter(i => i.status === 'pending');
+
+  // Gated Access Screen if NOT logged in as Admin
+  if (!isAdminAuth) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div className="modal-card" style={{ maxWidth: 420, textAlign: 'center', padding: 28 }}>
+          <div style={{ fontSize: '2.4rem', marginBottom: 10 }}>🔒</div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>Restricted Supervisor Console</h2>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-dim)', marginTop: 4, marginBottom: 20 }}>
+            This area is restricted to hostel supervisors (AdminA & Admin1). Regular students cannot access research logs.
+          </p>
+
+          <form onSubmit={handleUnlock}>
+            <div className="form-group">
+              <input 
+                type="password" 
+                className="form-input" 
+                placeholder="Enter Supervisor Passphrase (123456)" 
+                value={passphrase} 
+                onChange={(e) => setPassphrase(e.target.value)} 
+                required 
+                style={{ textAlign: 'center' }}
+              />
+            </div>
+
+            {authError && (
+              <div style={{ color: '#f87171', fontSize: '0.8rem', marginBottom: 12 }}>
+                Incorrect passphrase. (Hint: 123456)
+              </div>
+            )}
+
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 11, background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+              🛡️ Unlock Admin Hub
+            </button>
+          </form>
+
+          <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+            <Link href="/" style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textDecoration: 'none' }}>
+              ← Return to Student Marketplace
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-app)', padding: '24px 20px', display: 'flex', justifyContent: 'center' }}>

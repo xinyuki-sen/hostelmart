@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { Listing, ISORequest } from '@/types';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
 
-// Initial Pilot Dataset
 const INITIAL_LISTINGS: Listing[] = [
   {
     id: "101",
@@ -87,7 +86,7 @@ const INITIAL_LISTINGS: Listing[] = [
     roomNumber: "410",
     title: "Plastic Clothes Hangers (Set of 10)",
     description: "Graduating this weekend! Giving away 10 sturdy hangers and laundry mesh for free. First come, first served.",
-    price: 0, // Free Giveaway
+    price: 0,
     isNegotiable: false,
     isUrgent: true,
     condition: "Gently Used",
@@ -130,7 +129,15 @@ const INITIAL_ISO: ISORequest[] = [
   }
 ];
 
+interface UserState {
+  username: string;
+  role: 'user' | 'admin';
+  hostelBlock?: string;
+  roomNumber?: string;
+}
+
 export default function HomePage() {
+  const [user, setUser] = useState<UserState | null>(null);
   const [listings, setListings] = useState<Listing[]>(INITIAL_LISTINGS);
   const [isoRequests] = useState<ISORequest[]>(INITIAL_ISO);
   const [mode, setMode] = useState<'market' | 'iso'>('market');
@@ -138,10 +145,27 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortOption, setSortOption] = useState<string>('newest');
   
-  // Product Detail Modal State
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [carouselIndex, setCarouselIndex] = useState<number>(0);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // Check login state
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('hostelmart_user');
+      if (stored) {
+        setUser(JSON.parse(stored));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('hostelmart_user');
+    setUser(null);
+    showToast('Signed out successfully.');
+  };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -163,17 +187,14 @@ export default function HomePage() {
   const filteredListings = listings.filter(item => {
     if (item.status !== 'active' && item.status !== 'sold') return false;
     
-    // Category filtering
     if (category === 'free' && item.price !== 0) return false;
     if (category === 'under500' && (item.price === 0 || item.price > 500)) return false;
     if (category !== 'all' && category !== 'free' && category !== 'under500' && item.category !== category) return false;
 
-    // Search query
     const query = searchQuery.toLowerCase();
     return item.title.toLowerCase().includes(query) || item.hostelBlock.toLowerCase().includes(query);
   });
 
-  // Sorting
   if (sortOption === 'price_asc') {
     filteredListings.sort((a, b) => a.price - b.price);
   } else if (sortOption === 'price_desc') {
@@ -181,7 +202,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="app-container">
+    <div className="chrono-layout">
       {/* 1. Left Sidebar */}
       <aside className="chrono-sidebar">
         <div className="sidebar-header">
@@ -231,12 +252,18 @@ export default function HomePage() {
             <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>2</span>
           </Link>
 
-          <Link href="/admin" className="chrono-nav-btn" style={{ marginTop: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span>🛡️</span>
-              <span>Supervisor Hub</span>
+          {/* ADMIN LINK: ONLY VISIBLE IF LOGGED IN AS ADMIN! NEVER VISIBLE TO STUDENTS! */}
+          {user?.role === 'admin' && (
+            <div style={{ marginTop: 8, padding: '8px 4px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#f87171', padding: '0 8px 4px 8px', textTransform: 'uppercase' }}>🛡️ Supervisor Only</div>
+              <Link href="/admin" className="chrono-nav-btn" style={{ color: '#fca5a5' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>📊</span>
+                  <span>Supervisor Hub</span>
+                </div>
+              </Link>
             </div>
-          </Link>
+          )}
 
           <div className="nav-section-title">Hostel Wings</div>
           <div className="wing-item">
@@ -255,6 +282,7 @@ export default function HomePage() {
           </div>
         </nav>
 
+        {/* Sidebar Footer with Active Persona & Login / Logout */}
         <div className="sidebar-footer">
           <div className="live-indicator-row">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -266,8 +294,28 @@ export default function HomePage() {
             </div>
             <span style={{ color: '#64748b', fontSize: 10 }}>Synced</span>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-            Corridor Pickups • Instant UPI
+
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {user ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  👤 <strong>{user.username}</strong> ({user.role === 'admin' ? 'Admin' : 'Student'})
+                </div>
+                <button 
+                  onClick={handleLogout} 
+                  style={{ background: 'none', border: 'none', color: '#f87171', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link 
+                href="/login" 
+                style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <span>🔑 Sign In / Register</span>
+              </Link>
+            )}
           </div>
         </div>
       </aside>
@@ -454,7 +502,7 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* 3. Right Sidebar (Chrono Trending Insights) */}
+      {/* 3. Right Sidebar */}
       <aside className="chrono-right-drawer">
         <div className="insights-box">
           <div className="insights-header">
@@ -514,7 +562,6 @@ export default function HomePage() {
               <button className="modal-close" onClick={() => setSelectedListing(null)}>&times;</button>
             </div>
 
-            {/* Carousel */}
             <div className="detail-carousel-wrap">
               <img 
                 src={selectedListing.images[carouselIndex] || ''} 
@@ -548,7 +595,6 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Content Body */}
             <div className="detail-content-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.3 }}>
@@ -574,7 +620,6 @@ export default function HomePage() {
                 {selectedListing.description}
               </div>
 
-              {/* Verified Resident Card */}
               <div className="detail-seller-card">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
@@ -600,7 +645,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Sticky WhatsApp Action */}
               <div style={{ marginTop: 18 }}>
                 <a 
                   href={buildWhatsAppLink({
@@ -624,7 +668,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Toast Notification */}
       {toastMsg && (
         <div className="toast show" style={{ position: 'fixed', bottom: 84, left: '50%', transform: 'translateX(-50%)', background: 'var(--bg-surface-elevated)', color: '#fff', border: '1px solid var(--accent-blue)', padding: '10px 20px', borderRadius: 9999, zIndex: 3000, fontWeight: 600, fontSize: '0.85rem' }}>
           {toastMsg}
