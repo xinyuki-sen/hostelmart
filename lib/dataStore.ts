@@ -10,6 +10,10 @@ import { supabase } from '@/lib/supabase';
 const LISTINGS_STORAGE_KEY = 'hostelmart_listings_v2';
 const ISO_STORAGE_KEY = 'hostelmart_iso_v2';
 const USERS_STORAGE_KEY = 'hostelmart_user_registry_v2';
+const STUDENTS_DB_KEY = 'hostelmart_student_accounts_v2';
+const LIKES_STORAGE_KEY = 'hostelmart_saved_likes_v2';
+const CUSTOM_SUPABASE_KEY = 'hostelmart_custom_supabase';
+export const SESSION_USER_KEY = 'hostelmart_user';
 const EVENT_DATA_CHANGED = 'hostelmart_data_changed';
 
 export const SEED_LISTINGS: Listing[] = [];
@@ -36,10 +40,42 @@ function notifyStoreChanged() {
   }
 }
 
+export interface CloudSyncInfo {
+  isConnected: boolean;
+  provider: 'supabase' | 'local_fallback';
+  url: string;
+}
+
+export function getCustomSupabaseConfig(): { url: string; anonKey: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(CUSTOM_SUPABASE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+export function saveCustomSupabaseConfig(url: string, anonKey: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(CUSTOM_SUPABASE_KEY, JSON.stringify({ url: url.trim(), anonKey: anonKey.trim() }));
+    notifyStoreChanged();
+  } catch {}
+}
+
+export function clearCustomSupabaseConfig(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(CUSTOM_SUPABASE_KEY);
+    notifyStoreChanged();
+  } catch {}
+}
+
 // Check if Supabase credentials are valid
-function hasValidSupabase(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+export function hasValidSupabase(): boolean {
+  const custom = getCustomSupabaseConfig();
+  const url = custom?.url || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = custom?.anonKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   return Boolean(
     url && 
     !url.includes('placeholder') && 
@@ -47,6 +83,17 @@ function hasValidSupabase(): boolean {
     !key.includes('placeholder') && 
     !key.includes('your_copied')
   );
+}
+
+export function getCloudSyncInfo(): CloudSyncInfo {
+  const custom = getCustomSupabaseConfig();
+  const url = custom?.url || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const isConnected = hasValidSupabase();
+  return {
+    isConnected,
+    provider: isConnected ? 'supabase' : 'local_fallback',
+    url: isConnected ? url.replace(/^(https:\/\/[^.]+).*/, '$1.supabase.co') : 'Local Storage Engine'
+  };
 }
 
 // --------------------------------------------------------------------
@@ -206,6 +253,48 @@ export async function updateListingStatus(
 }
 
 /**
+ * Resubmit a previously rejected listing for supervisor re-approval
+ * Clears rejection reason and returns listing status to 'pending'
+ */
+export async function resubmitListing(
+  id: string,
+  updates?: { title?: string; price?: number; description?: string }
+): Promise<Listing[]> {
+  const listings = await getStoredListings();
+  const updated = listings.map(item => {
+    if (item.id === id) {
+      return {
+        ...item,
+        ...(updates?.title ? { title: updates.title.trim() } : {}),
+        ...(updates?.price !== undefined ? { price: Number(updates.price) } : {}),
+        ...(updates?.description ? { description: updates.description.trim() } : {}),
+        status: 'pending' as ListingStatus,
+        rejectionReason: undefined,
+        updatedAt: new Date().toISOString()
+      };
+    }
+    return item;
+  });
+
+  saveListingsToLocal(updated);
+
+  if (hasValidSupabase()) {
+    try {
+      supabase.from('listings').update({
+        status: 'pending',
+        rejection_reason: null,
+        updated_at: new Date().toISOString(),
+        ...(updates?.title ? { title: updates.title.trim() } : {}),
+        ...(updates?.price !== undefined ? { price: Number(updates.price) } : {}),
+        ...(updates?.description ? { description: updates.description.trim() } : {})
+      }).eq('id', id).then(() => {});
+    } catch {}
+  }
+
+  return updated;
+}
+
+/**
  * Save private supervisor research notes
  */
 export async function updateListingAdminNote(id: string, note: string): Promise<Listing[]> {
@@ -284,8 +373,6 @@ export async function deleteListing(id: string, requesterUsername?: string): Pro
 // 2. STUDENT ACCOUNTS & AUTHENTICATION DATABASE
 // --------------------------------------------------------------------
 
-const STUDENTS_DB_KEY = 'hostelmart_student_accounts_v2';
-
 export interface StudentAccount {
   id: string;
   username: string;
@@ -324,7 +411,10 @@ export async function registerStudentAccount(data: {
   password: string;
 }): Promise<{ success: boolean; user?: StudentAccount; error?: string }> {
   const cleanUsername = data.username.trim();
-  const cleanPhone = data.phone.trim();
+  let cleanPhone = data.phone.replace(/\D/g, '').replace(/^0+/, '');
+  if (cleanPhone.startsWith('91') && cleanPhone.length === 12) {
+    cleanPhone = cleanPhone.slice(2);
+  }
   const cleanBlock = data.hostelBlock.trim();
   const cleanRoom = data.roomNumber.trim();
   const cleanPass = data.password.trim();
@@ -335,8 +425,8 @@ export async function registerStudentAccount(data: {
     return { success: false, error: 'Username can only contain letters, numbers, and underscores.' };
   }
   
-  if (!cleanPhone || cleanPhone.replace(/\D/g, '').length < 10) {
-    return { success: false, error: 'Please enter a valid 10-digit mobile number for WhatsApp verification.' };
+  if (!cleanPhone || cleanPhone.length !== 10) {
+    return { success: false, error: 'Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).' };
   }
   if (!cleanBlock) return { success: false, error: 'Hostel block is required.' };
   if (!cleanRoom) return { success: false, error: 'Room number is required.' };
@@ -433,6 +523,78 @@ export async function authenticateStudent(data: {
   recordUserLogin(matched);
 
   return { success: true, user: matched };
+}
+
+/**
+ * Update a student's contact details, hostel room, or password
+ */
+export async function updateStudentProfile(
+  username: string,
+  updates: {
+    phone?: string;
+    hostelBlock?: string;
+    roomNumber?: string;
+    password?: string;
+  }
+): Promise<{ success: boolean; user?: StudentAccount; error?: string }> {
+  if (typeof window === 'undefined') return { success: false, error: 'Window not available' };
+
+  const cleanUsername = username.trim();
+  const students = getRegisteredStudents();
+  const index = students.findIndex(u => u.username.toLowerCase() === cleanUsername.toLowerCase());
+
+  if (index === -1) {
+    return { success: false, error: `Student profile for "@${cleanUsername}" was not found.` };
+  }
+
+  const existing = students[index];
+
+  let normalizedPhone = existing.phone;
+  if (updates.phone && updates.phone.trim()) {
+    let p = updates.phone.replace(/\D/g, '').replace(/^0+/, '');
+    if (p.startsWith('91') && p.length === 12) p = p.slice(2);
+    if (p.length === 10) normalizedPhone = p;
+  }
+
+  const updatedUser: StudentAccount = {
+    ...existing,
+    phone: normalizedPhone,
+    hostelBlock: updates.hostelBlock || existing.hostelBlock,
+    roomNumber: updates.roomNumber && updates.roomNumber.trim() ? updates.roomNumber.trim() : existing.roomNumber,
+    password: updates.password && updates.password.trim() ? updates.password.trim() : existing.password
+  };
+
+  students[index] = updatedUser;
+  try {
+    localStorage.setItem(STUDENTS_DB_KEY, JSON.stringify(students));
+  } catch (err) {
+    console.error('[HostelMart] Failed to update student database:', err);
+  }
+
+  // Update active session across both key conventions for maximum reliability
+  try {
+    for (const key of ['hostelmart_user', 'hostelmart_session']) {
+      const rawSession = localStorage.getItem(key);
+      if (rawSession) {
+        const sess = JSON.parse(rawSession);
+        if (sess.username?.toLowerCase() === cleanUsername.toLowerCase()) {
+          const newSess = {
+            ...sess,
+            phone: updatedUser.phone,
+            hostelBlock: updatedUser.hostelBlock,
+            roomNumber: updatedUser.roomNumber
+          };
+          localStorage.setItem(key, JSON.stringify(newSess));
+        }
+      }
+    }
+  } catch {}
+
+  // Update audit log
+  recordUserLogin(updatedUser);
+  notifyStoreChanged();
+
+  return { success: true, user: updatedUser };
 }
 
 // --------------------------------------------------------------------
@@ -583,7 +745,42 @@ export async function deleteISORequest(id: string): Promise<ISORequest[]> {
 }
 
 // --------------------------------------------------------------------
-// 4. REACTIVITY SUBSCRIPTION
+// 4. SAVED ITEMS & WISHLIST API
+// --------------------------------------------------------------------
+
+export function getSavedItemLikes(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(LIKES_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch {}
+  return new Set();
+}
+
+export function toggleItemLike(id: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const likes = getSavedItemLikes();
+    let isNowLiked = false;
+    if (likes.has(id)) {
+      likes.delete(id);
+      isNowLiked = false;
+    } else {
+      likes.add(id);
+      isNowLiked = true;
+    }
+    localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(Array.from(likes)));
+    notifyStoreChanged();
+    return isNowLiked;
+  } catch {}
+  return false;
+}
+
+// --------------------------------------------------------------------
+// 5. REACTIVITY SUBSCRIPTION (CROSS-COMPONENT & CROSS-TAB)
 // --------------------------------------------------------------------
 
 export function subscribeToStore(callback: () => void): () => void {
@@ -591,7 +788,15 @@ export function subscribeToStore(callback: () => void): () => void {
 
   const handleCustom = () => callback();
   const handleStorage = (e: StorageEvent) => {
-    if (e.key === LISTINGS_STORAGE_KEY || e.key === ISO_STORAGE_KEY || e.key === USERS_STORAGE_KEY) {
+    if (
+      e.key === LISTINGS_STORAGE_KEY || 
+      e.key === ISO_STORAGE_KEY || 
+      e.key === USERS_STORAGE_KEY ||
+      e.key === STUDENTS_DB_KEY ||
+      e.key === LIKES_STORAGE_KEY ||
+      e.key === CUSTOM_SUPABASE_KEY ||
+      e.key === 'hostelmart_user'
+    ) {
       callback();
     }
   };

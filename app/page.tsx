@@ -4,16 +4,23 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Listing, ISORequest } from '@/types';
-import { buildWhatsAppLink } from '@/lib/whatsapp';
 import { 
   getStoredListings, 
   getStoredISORequests, 
-  createISORequest, 
   deleteISORequest,
+  getSavedItemLikes,
+  toggleItemLike,
   subscribeToStore,
   SEED_LISTINGS,
   SEED_ISO 
 } from '@/lib/dataStore';
+import {
+  ListingCard,
+  ProductDetailModal,
+  ProfileModal,
+  ISOModal,
+  MarketplaceSidebar
+} from '@/components';
 
 const INITIAL_LISTINGS: Listing[] = SEED_LISTINGS;
 const INITIAL_ISO: ISORequest[] = SEED_ISO;
@@ -21,6 +28,7 @@ const INITIAL_ISO: ISORequest[] = SEED_ISO;
 interface UserState {
   username: string;
   role: 'user' | 'admin';
+  phone?: string;
   hostelBlock?: string;
   roomNumber?: string;
 }
@@ -36,21 +44,17 @@ export default function HomePage() {
   const [sortOption, setSortOption] = useState<string>('newest');
   
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
-  const [carouselIndex, setCarouselIndex] = useState<number>(0);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-
-  // ISO Form State
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [showIsoModal, setShowIsoModal] = useState(false);
-  const [isoTitle, setIsoTitle] = useState('');
-  const [isoBudget, setIsoBudget] = useState('300');
-  const [isoUrgency, setIsoUrgency] = useState('Tonight before 10 PM');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const [l, iso] = await Promise.all([
       getStoredListings(),
       getStoredISORequests()
     ]);
-    setListings(l);
+    const likes = getSavedItemLikes();
+    setListings(l.map(item => ({ ...item, isLiked: likes.has(item.id) })));
     setIsoRequests(iso);
   }, []);
 
@@ -60,7 +64,6 @@ export default function HomePage() {
       const stored = localStorage.getItem('hostelmart_user');
       if (stored) {
         const u = JSON.parse(stored);
-        // If an admin is logged in, redirect directly to their dedicated admin portal
         if (u.role === 'admin') {
           router.replace('/admin');
           return;
@@ -90,25 +93,6 @@ export default function HomePage() {
     setTimeout(() => setToastMsg(null), 2500);
   };
 
-  const handleCreateIso = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isoTitle.trim()) {
-      showToast('Please enter the item you need.');
-      return;
-    }
-    await createISORequest({
-      title: isoTitle.trim(),
-      budget: Number(isoBudget) || 0,
-      location: `${user?.hostelBlock || 'Block B'}, Rm ${user?.roomNumber || '304'}`,
-      urgency: isoUrgency.trim() || 'Urgent',
-      requesterName: user?.username || 'rahul_k',
-      requesterPhone: '9876543210'
-    });
-    showToast('🎉 Wanted request posted live to ISO Board!');
-    setShowIsoModal(false);
-    setIsoTitle('');
-  };
-
   const handleDeleteIso = async (id: string) => {
     if (confirm('Are you sure you want to remove this wanted request?')) {
       await deleteISORequest(id);
@@ -119,14 +103,9 @@ export default function HomePage() {
 
   const toggleHeart = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setListings(prev => prev.map(item => {
-      if (item.id === id) {
-        const nextLiked = !item.isLiked;
-        showToast(nextLiked ? '❤️ Added to Saved Items' : 'Removed from Saved Items');
-        return { ...item, isLiked: nextLiked };
-      }
-      return item;
-    }));
+    const isNowLiked = toggleItemLike(id);
+    showToast(isNowLiked ? '❤️ Added to Saved Items' : 'Removed from Saved Items');
+    setListings(prev => prev.map(item => item.id === id ? { ...item, isLiked: isNowLiked } : item));
   };
 
   const filteredListings = listings.filter(item => {
@@ -138,132 +117,28 @@ export default function HomePage() {
 
     const query = searchQuery.toLowerCase();
     return item.title.toLowerCase().includes(query) || item.hostelBlock.toLowerCase().includes(query);
+  }).sort((a, b) => {
+    if (sortOption === 'price_asc') return a.price - b.price;
+    if (sortOption === 'price_desc') return b.price - a.price;
+    return 0;
   });
 
-  if (sortOption === 'price_asc') {
-    filteredListings.sort((a, b) => a.price - b.price);
-  } else if (sortOption === 'price_desc') {
-    filteredListings.sort((a, b) => b.price - a.price);
-  }
-
-  const myAdsCount = user && user.username
-    ? listings.filter(i => i.sellerName && i.sellerName.trim().toLowerCase() === user.username.trim().toLowerCase()).length
+  const activeMarketListings = listings.filter(i => i.status === 'active');
+  const myAdsCount = user 
+    ? listings.filter(i => i.sellerName?.trim().toLowerCase() === user.username.trim().toLowerCase()).length 
     : 0;
 
   return (
     <div className="chrono-layout">
-      {/* 1. Left Sidebar */}
-      <aside className="chrono-sidebar">
-        <div className="sidebar-header">
-          <div className="sidebar-brand">
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>
-              ⚡
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: '0.95rem', fontWeight: 800 }}>HostelMart</span>
-                <span className="brand-badge">v2.1</span>
-              </div>
-              <p style={{ fontSize: 11, color: 'var(--text-dim)' }}>Hostel P2P Exchange</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="sidebar-nav">
-          <div className="nav-section-title">Navigation</div>
-          <button 
-            className={`chrono-nav-btn ${mode === 'market' ? 'active' : ''}`}
-            onClick={() => setMode('market')}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span>🏠</span>
-              <span>Marketplace Feed</span>
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 9999, background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd' }}>LIVE</span>
-          </button>
-
-          <button 
-            className={`chrono-nav-btn ${mode === 'iso' ? 'active' : ''}`}
-            onClick={() => setMode('iso')}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span>🔍</span>
-              <span>Looking For (ISO)</span>
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 9999, background: 'rgba(168, 85, 247, 0.2)', color: '#d8b4fe' }}>NEW</span>
-          </button>
-
-          <Link href="/my-ads" className="chrono-nav-btn">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span>📦</span>
-              <span>My Listed Ads</span>
-            </div>
-            <span style={{ 
-              fontSize: 11, 
-              fontWeight: 700,
-              padding: myAdsCount > 0 ? '1px 7px' : '0',
-              borderRadius: 9999,
-              background: myAdsCount > 0 ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
-              color: myAdsCount > 0 ? '#60a5fa' : 'var(--text-dim)' 
-            }}>
-              {user ? myAdsCount : 0}
-            </span>
-          </Link>
-
-          <div className="nav-section-title">Hostel Wings</div>
-          <div className="wing-item">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="status-dot" style={{ backgroundColor: '#3b82f6' }}></span>
-              <span>Block B (Main Boys)</span>
-            </div>
-            <span style={{ fontSize: 10, color: '#10b981' }}>Active</span>
-          </div>
-          <div className="wing-item">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="status-dot" style={{ backgroundColor: '#f97316' }}></span>
-              <span>Block A (Seniors)</span>
-            </div>
-            <span style={{ fontSize: 10, color: '#10b981' }}>Active</span>
-          </div>
-        </nav>
-
-        {/* Sidebar Footer with Active Persona & Login / Logout */}
-        <div className="sidebar-footer">
-          <div className="live-indicator-row">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div className="ping-wrapper">
-                <span className="ping-animate"></span>
-                <span className="ping-core"></span>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#cbd5e1' }}>Campus Gateway</span>
-            </div>
-            <span style={{ color: '#64748b', fontSize: 10 }}>Synced</span>
-          </div>
-
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            {user ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  👤 <strong>{user.username}</strong> ({user.role === 'admin' ? 'Admin' : 'Student'})
-                </div>
-                <button 
-                  onClick={handleLogout} 
-                  style={{ background: 'none', border: 'none', color: '#f87171', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <Link 
-                href="/login" 
-                style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
-              >
-                <span>🔑 Sign In / Register</span>
-              </Link>
-            )}
-          </div>
-        </div>
-      </aside>
+      {/* 1. Left Sidebar Navigation */}
+      <MarketplaceSidebar
+        mode={mode}
+        setMode={setMode}
+        myAdsCount={myAdsCount}
+        user={user}
+        onOpenProfile={() => setShowProfileModal(true)}
+        onLogout={handleLogout}
+      />
 
       {/* 2. Main Content Feed */}
       <main className="chrono-main">
@@ -287,51 +162,38 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Mode Switcher Tabs */}
-        <div className="market-mode-tabs">
-          <button 
-            className={`market-mode-btn ${mode === 'market' ? 'active' : ''}`}
-            onClick={() => setMode('market')}
-          >
-            📦 Items For Sale
-          </button>
-          <button 
-            className={`market-mode-btn ${mode === 'iso' ? 'active' : ''}`}
-            onClick={() => setMode('iso')}
-          >
-            🔍 Looking For / Wanted
-          </button>
-        </div>
-
-        {/* Controls: Search & Sort */}
-        <div className="controls-row">
+        {/* Global Search and Sort Toolbar */}
+        <div className="search-bar-row">
           <div className="search-input-wrap">
-            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }}>🔍</span>
+            <span className="search-icon">🔍</span>
             <input 
               type="text" 
-              placeholder="Search kettles, cycles, drawing kits, table fans..." 
+              className="search-input" 
+              placeholder={mode === 'market' ? "Search cycles, calculators, mattresses, books, or wings..." : "Search items students are looking for..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: '100%', padding: '11px 16px 11px 40px', background: 'var(--bg-card)', border: '1px solid var(--border-card)', borderRadius: 'var(--radius-md)', color: 'var(--text-main)', fontSize: '0.88rem', outline: 'none' }}
             />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                style={{ position: 'absolute', right: 12, background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14 }}
+              >
+                ✕
+              </button>
+            )}
           </div>
-
           {mode === 'market' && (
-            <select 
-              className="sort-select" 
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value)}
-            >
-              <option value="newest">✨ Newest First</option>
+            <select className="sort-select" value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
+              <option value="newest">🕒 Recently Listed</option>
               <option value="price_asc">💰 Price: Low to High</option>
               <option value="price_desc">💎 Price: High to Low</option>
             </select>
           )}
         </div>
 
-        {/* Category Filter Pills (Market Mode) */}
+        {/* Category Filter Pills (Market Mode only) */}
         {mode === 'market' && (
-          <div className="chrono-filter-row">
+          <div className="chrono-pill-row">
             <button className={`chrono-pill ${category === 'all' ? 'active' : ''}`} onClick={() => setCategory('all')}>🔥 All</button>
             <button className={`chrono-pill pill-karma ${category === 'free' ? 'active' : ''}`} onClick={() => setCategory('free')}>🎁 Free Stuff (₹0)</button>
             <button className={`chrono-pill ${category === 'under500' ? 'active' : ''}`} onClick={() => setCategory('under500')}>⚡ Under ₹500</button>
@@ -342,7 +204,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Listings Grid (Natural 4:3 Ratio, Tap-to-View) */}
+        {/* Listings Grid (Market Mode) */}
         {mode === 'market' ? (
           filteredListings.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '64px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-card)', margin: '16px 0' }}>
@@ -362,180 +224,112 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="chrono-grid">
-              {filteredListings.map(item => {
-                const isFree = item.price === 0;
-                const isSold = item.status === 'sold';
-                const coverImg = item.images && item.images.length > 0 ? item.images[0] : '';
-
-                return (
-                  <div 
-                    key={item.id} 
-                    className="chrono-card"
-                    style={{ opacity: isSold ? 0.65 : 1 }}
-                    onClick={() => {
-                      setSelectedListing(item);
-                      setCarouselIndex(0);
-                    }}
-                  >
-                    <div className="chrono-card-img-wrap">
-                      {item.isUrgent && <div className="urgent-banner">🔥 48h MOVING OUT CLEARANCE</div>}
-                      <img src={coverImg} className="chrono-card-img" alt={item.title} />
-                      
-                      <div className="photo-count-badge">📷 {item.images ? item.images.length : 1}</div>
-                      
-                      <button 
-                        className={`card-heart-btn ${item.isLiked ? 'liked' : ''}`}
-                        onClick={(e) => toggleHeart(item.id, e)}
-                      >
-                        {item.isLiked ? '❤️' : '🤍'}
-                      </button>
-
-                      <div style={{ position: 'absolute', bottom: 8, left: 8, display: 'flex', gap: 6 }}>
-                        {isSold ? (
-                          <span className="badge badge-sold">SOLD ✓</span>
-                        ) : isFree ? (
-                          <span className="badge badge-free">FREE 🎁</span>
-                        ) : (
-                          <span className={`badge ${item.isNegotiable ? 'badge-negotiable' : 'badge-fixed'}`}>
-                            {item.isNegotiable ? 'Negotiable' : 'Fixed'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="chrono-card-body">
-                      <div className="card-price-row">
-                        <div className={`item-price ${isFree ? 'price-free' : ''}`}>
-                          {isFree ? 'FREE' : `₹${item.price.toLocaleString()}`}
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{item.condition}</span>
-                      </div>
-
-                      <div className="card-title" title={item.title}>{item.title}</div>
-
-                      <div className="card-meta-line">
-                        <span>📍 {item.hostelBlock} • Rm {item.roomNumber}</span>
-                        <span>•</span>
-                        <span>{item.timeAgo}</span>
-                      </div>
-
-                      <div className="card-tap-hint">
-                        <span>Verified resident</span>
-                        <span style={{ color: '#60a5fa', fontWeight: 600 }}>View Details →</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {filteredListings.map(item => (
+                <ListingCard
+                  key={item.id}
+                  item={item}
+                  onSelect={setSelectedListing}
+                  onToggleHeart={toggleHeart}
+                />
+              ))}
             </div>
           )
         ) : (
-          /* Looking For (ISO) Grid */
-          isoRequests.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '64px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-card)', margin: '16px 0' }}>
-              <div style={{ fontSize: '3.2rem', marginBottom: 12 }}>🔍</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: 6 }}>
-                No Wanted Requests Yet
-              </h3>
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-dim)', maxWidth: 440, margin: '0 auto 24px auto', lineHeight: 1.5 }}>
-                Looking for a kettle, scientific calculator, cycle, or engineering textbooks? Post a request and hostel mates with spare items can message you on WhatsApp!
-              </p>
-              <button 
-                onClick={() => setShowIsoModal(true)} 
-                className="btn btn-primary" 
-                style={{ padding: '10px 24px', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-              >
-                <span>✨</span>
-                <span>Post a Wanted Request</span>
-              </button>
-            </div>
-          ) : (
-            <div className="chrono-grid">
-              {isoRequests.map(req => {
-                const waLink = `https://wa.me/91${req.requesterPhone}?text=${encodeURIComponent(
-                  `Hey! I saw your request for "${req.title}" on HostelMart.\nI have one available in ${req.location}! Let's connect.`
-                )}`;
+          /* Looking For / ISO Board Feed */
+          <div className="iso-feed-wrap">
+            {isoRequests.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '64px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-card)' }}>
+                <div style={{ fontSize: '3rem', marginBottom: 12 }}>🔍</div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: 6 }}>No Wanted Requests Right Now</h3>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-dim)', maxWidth: 420, margin: '0 auto 20px auto' }}>
+                  Looking for a specific item? Post a request with your budget and hostel block.
+                </p>
+                <button className="btn btn-primary" onClick={() => setShowIsoModal(true)}>
+                  ➕ Post Wanted Request
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {isoRequests.map(req => {
+                  const isOwner = Boolean(user && req.requesterName && req.requesterName.trim().toLowerCase() === user.username.trim().toLowerCase());
+                  const cleanPhone = (req.requesterPhone || '9876543210').replace(/\D/g, '').replace(/^0+/, '');
+                  const fullPhone = cleanPhone.startsWith('91') && cleanPhone.length > 10 ? cleanPhone : `91${cleanPhone}`;
+                  const waText = encodeURIComponent(`Hey! I saw your Wanted request on HostelMart for *${req.title}*. I have one available in my hostel room!`);
 
-                return (
-                  <div key={req.id} className="chrono-card" style={{ cursor: 'default' }}>
-                    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10, height: '100%' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' }}>WANTED</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{req.createdAt}</span>
+                  return (
+                    <div key={req.id} className="iso-card">
+                      <div className="iso-badge-row">
+                        <span className="badge badge-fixed">ISO / WANTED</span>
+                        <span style={{ fontSize: 11, color: '#f87171', fontWeight: 600 }}>⏰ {req.urgency}</span>
                       </div>
-
-                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>{req.title}</div>
+                      <div className="iso-title">{req.title}</div>
+                      <div className="iso-budget-row">
+                        <span>Max Budget: <strong>₹{req.budget}</strong></span>
+                        <span>•</span>
+                        <span>Delivery / Meetup: <strong>{req.location}</strong></span>
+                      </div>
                       
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--bg-surface-elevated)', padding: '8px 12px', borderRadius: 6 }}>
-                        ⏰ <strong>Needed by:</strong> {req.urgency}
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Budget:</span>
-                        <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#34d399' }}>₹{req.budget}</span>
-                      </div>
-
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>📍 Requested by: {req.requesterName} ({req.location})</div>
-
-                      <div style={{ marginTop: 'auto', paddingTop: 10 }}>
-                        {user && req.requesterName.trim().toLowerCase() === user.username.trim().toLowerCase() ? (
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <div style={{ flex: 1, padding: '8px 10px', background: 'rgba(168, 85, 247, 0.15)', borderRadius: 6, color: '#d8b4fe', fontSize: '0.78rem', textAlign: 'center', fontWeight: 600 }}>
-                              ✨ Your Request
-                            </div>
-                            <button 
-                              type="button" 
-                              onClick={() => handleDeleteIso(req.id)}
-                              className="btn btn-secondary" 
-                              style={{ padding: '8px 12px', fontSize: '0.78rem', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}
-                              title="Delete your wanted request"
-                            >
-                              🗑️ Remove
-                            </button>
-                          </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                          👤 Requested by <strong>@{req.requesterName}</strong>
+                        </div>
+                        {isOwner ? (
+                          <button 
+                            type="button" 
+                            onClick={() => handleDeleteIso(req.id)}
+                            style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#f87171', borderRadius: 6, padding: '5px 12px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            🗑️ Remove My Request
+                          </button>
                         ) : (
-                          <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn btn-whatsapp" style={{ width: '100%' }}>
-                            <span>💬 I Have This! Message</span>
+                          <a 
+                            href={`https://wa.me/${fullPhone}?text=${waText}`}
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="btn btn-whatsapp" 
+                            style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                          >
+                            <span>💬 I Have This (Chat)</span>
                           </a>
                         )}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
       </main>
 
-      {/* 3. Right Sidebar (LIVE Dynamic Trends from Marketplace Data) */}
-      <aside className="chrono-right-drawer">
+      {/* 3. Right Sidebar / Insights & Campus Trends */}
+      <aside className="chrono-insights">
         <div className="insights-box">
           <div className="insights-header">
-            <span>🔥 Live Campus Trends</span>
+            <span className="insights-title">Campus Trends</span>
+            <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Live</span>
           </div>
 
           {(() => {
-            const activeMarketListings = listings.filter(i => i.status === 'active' || i.status === 'sold');
-            const categoryCounts: Record<string, number> = {};
-            activeMarketListings.forEach(item => {
-              categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
-            });
-
             const categoryNames: Record<string, string> = {
-              room_essentials: 'Room Essentials',
-              electronics: 'Electronics',
-              books_academics: 'Books & Academics',
-              mobility_fitness: 'Cycles & Fitness',
-              clothing_fashion: 'Apparel',
-              other: 'General Items'
+              room_essentials: '🛏️ Room Essentials',
+              electronics: '⚡ Electronics',
+              books_academics: '📚 Books & Academics',
+              mobility_fitness: '🚲 Cycles & Mobility',
+              clothing_fashion: '👕 Fashion & Winterwear',
+              other: '📦 General Campus Items'
             };
 
-            const topCategories = Object.entries(categoryCounts)
+            const counts: Record<string, number> = {};
+            activeMarketListings.forEach(item => {
+              counts[item.category] = (counts[item.category] || 0) + 1;
+            });
+
+            const topCategories = Object.entries(counts)
               .sort((a, b) => b[1] - a[1])
               .slice(0, 3);
 
-            if (activeMarketListings.length === 0 && isoRequests.length === 0) {
+            if (topCategories.length === 0 && isoRequests.length === 0) {
               return (
                 <div style={{ padding: '10px 0', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
                   No campus listings yet. Be the first to post an item or request!
@@ -563,11 +357,13 @@ export default function HomePage() {
                   <div key={req.id} className="trending-item">
                     <div>
                       <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: 12 }}>
-                        {req.title}
+                        Wanted: {req.title.length > 20 ? `${req.title.substring(0, 20)}...` : req.title}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Budget: ₹{req.budget}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                        Budget: ₹{req.budget} • {req.location}
+                      </div>
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b' }}>Wanted</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#c084fc' }}>ISO</span>
                   </div>
                 ))}
 
@@ -595,192 +391,31 @@ export default function HomePage() {
         </div>
       </aside>
 
-      {/* PRODUCT DETAIL MODAL (TAP TO VIEW) */}
+      {/* 4. MODALS (Extracted into clean components) */}
       {selectedListing && (
-        <div className="modal-overlay" onClick={() => setSelectedListing(null)}>
-          <div className="modal-card product-detail-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header" style={{ padding: '16px 20px', marginBottom: 0 }}>
-              <div>
-                <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
-                  {selectedListing.category.replace('_', ' ').toUpperCase()}
-                </span>
-                <span className="badge" style={{ background: 'rgba(255, 255, 255, 0.1)', color: 'var(--text-muted)', marginLeft: 6 }}>
-                  {selectedListing.condition}
-                </span>
-              </div>
-              <button className="modal-close" onClick={() => setSelectedListing(null)}>&times;</button>
-            </div>
-
-            <div className="detail-carousel-wrap">
-              <img 
-                src={selectedListing.images[carouselIndex] || ''} 
-                className="detail-carousel-img" 
-                alt={selectedListing.title} 
-              />
-              {selectedListing.images.length > 1 && (
-                <>
-                  <button 
-                    className="carousel-btn prev"
-                    onClick={() => setCarouselIndex((carouselIndex - 1 + selectedListing.images.length) % selectedListing.images.length)}
-                  >
-                    &#10094;
-                  </button>
-                  <button 
-                    className="carousel-btn next"
-                    onClick={() => setCarouselIndex((carouselIndex + 1) % selectedListing.images.length)}
-                  >
-                    &#10095;
-                  </button>
-                  <div className="detail-dots-row">
-                    {selectedListing.images.map((_, idx) => (
-                      <div 
-                        key={idx}
-                        className={`detail-dot ${idx === carouselIndex ? 'active' : ''}`}
-                        onClick={() => setCarouselIndex(idx)}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="detail-content-body">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.3 }}>
-                  {selectedListing.title}
-                </h2>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: selectedListing.price === 0 ? '#34d399' : 'var(--text-main)', whiteSpace: 'nowrap', marginLeft: 14 }}>
-                  {selectedListing.price === 0 ? 'FREE' : `₹${selectedListing.price.toLocaleString()}`}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-                {selectedListing.isUrgent && (
-                  <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
-                    🔥 48h Move-Out Clearance
-                  </span>
-                )}
-                <span className={`badge ${selectedListing.isNegotiable ? 'badge-negotiable' : 'badge-fixed'}`}>
-                  {selectedListing.isNegotiable ? 'Negotiable' : 'Fixed Price'}
-                </span>
-              </div>
-
-              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 16 }}>
-                {selectedListing.description}
-              </div>
-
-              <div className="detail-seller-card">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
-                    👤
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>
-                        {selectedListing.sellerName}
-                      </span>
-                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontWeight: 700 }}>
-                        Verified Resident 🟢
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: 2 }}>
-                      {selectedListing.hostelBlock} • Room {selectedListing.roomNumber}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Reputation</div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fbbf24' }}>⚡ 3 Deals Done</div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 18 }}>
-                {user && selectedListing.sellerName.trim().toLowerCase() === user.username.trim().toLowerCase() ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ padding: '10px 14px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 8, color: '#93c5fd', fontSize: '0.85rem', textAlign: 'center' }}>
-                      📦 <strong>This is your listing</strong> (Interested buyers will contact your WhatsApp)
-                    </div>
-                    <Link 
-                      href="/my-ads" 
-                      className="btn btn-primary" 
-                      style={{ width: '100%', padding: 12, textAlign: 'center', fontSize: '0.9rem' }}
-                    >
-                      ⚙️ Manage in &ldquo;My Listed Ads&rdquo; →
-                    </Link>
-                  </div>
-                ) : (
-                  <a 
-                    href={buildWhatsAppLink({
-                      phone: selectedListing.sellerPhone,
-                      title: selectedListing.title,
-                      price: selectedListing.price,
-                      isNegotiable: selectedListing.isNegotiable,
-                      hostelBlock: selectedListing.hostelBlock,
-                      roomNumber: selectedListing.roomNumber
-                    })}
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="btn btn-whatsapp" 
-                    style={{ width: '100%', padding: 13, fontSize: '0.95rem' }}
-                  >
-                    <span>💬 Bargain / Contact on WhatsApp</span>
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProductDetailModal
+          item={selectedListing}
+          currentUser={user}
+          onClose={() => setSelectedListing(null)}
+        />
       )}
 
-      {/* ISO REQUEST CREATION MODAL */}
-      {showIsoModal && (
-        <div className="modal-overlay" onClick={() => setShowIsoModal(false)}>
-          <div className="modal-card" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>🔍 Post Wanted (ISO) Request</h2>
-              <button className="modal-close" onClick={() => setShowIsoModal(false)}>&times;</button>
-            </div>
-            <form onSubmit={handleCreateIso} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }}>
-              <div className="form-group">
-                <label className="form-label">Item Needed</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  required 
-                  placeholder="e.g. Casio fx-991EX Calculator or Table Fan" 
-                  value={isoTitle} 
-                  onChange={(e) => setIsoTitle(e.target.value)} 
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Budget Willing to Pay (₹)</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  required 
-                  min="0" 
-                  placeholder="₹" 
-                  value={isoBudget} 
-                  onChange={(e) => setIsoBudget(e.target.value)} 
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Urgency / Timeline</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  required 
-                  placeholder="e.g. Tonight before 10 PM (Exam tomorrow)" 
-                  value={isoUrgency} 
-                  onChange={(e) => setIsoUrgency(e.target.value)} 
-                />
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ padding: 12, marginTop: 8 }}>
-                🚀 Post to Wanted Board
-              </button>
-            </form>
-          </div>
-        </div>
+      <ISOModal
+        isOpen={showIsoModal}
+        currentUser={user}
+        onClose={() => setShowIsoModal(false)}
+        onSuccess={loadData}
+        showToast={showToast}
+      />
+
+      {user && (
+        <ProfileModal
+          isOpen={showProfileModal}
+          currentUser={user}
+          onClose={() => setShowProfileModal(false)}
+          onSuccess={(updated) => setUser(updated)}
+          showToast={showToast}
+        />
       )}
 
       {toastMsg && (

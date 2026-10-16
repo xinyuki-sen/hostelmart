@@ -92,6 +92,10 @@ export default function SellPage() {
       showToast('At least 1 item photo is required.');
       return;
     }
+    if (!roomNumber.trim()) {
+      showToast('Please enter your hostel room number for physical corridor pickup.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -101,7 +105,7 @@ export default function SellPage() {
         condition,
         price: Number(price) || 0,
         hostelBlock,
-        roomNumber: roomNumber || '101',
+        roomNumber: roomNumber.trim(),
         description: description.trim() || 'No description provided.',
         isNegotiable,
         isUrgent,

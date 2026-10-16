@@ -5,8 +5,10 @@
 
 export function normalizePhoneNumber(phone: string, defaultCountryCode: string = '91'): string {
   if (!phone) return '';
-  const cleaned = phone.replace(/\D/g, '');
-  if (cleaned.startsWith(defaultCountryCode)) {
+  let cleaned = phone.replace(/\D/g, '');
+  // Strip leading zeroes (common in Indian mobile numbers like 09876543210)
+  cleaned = cleaned.replace(/^0+/, '');
+  if (cleaned.startsWith(defaultCountryCode) && cleaned.length > 10) {
     return cleaned;
   }
   return `${defaultCountryCode}${cleaned}`;

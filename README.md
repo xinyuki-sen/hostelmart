@@ -229,35 +229,50 @@ Item is hidden from feed                        Item appears in "📥 Approval Q
 
 ---
 
-## 📁 Architecture & File Structure
+## 📁 Clean Frontend vs Backend Architecture
 
 ```
 hostelmart/
-├── app/
-│   ├── layout.tsx                # HTML shell, Google Fonts (Inter), CSS stylesheets
-│   ├── page.tsx                  # Marketplace feed, Live Trends sidebar, Detail modal, ISO board
-│   ├── login/page.tsx            # Student registration & strict login, Admin login
-│   ├── sell/page.tsx             # 3-step listing creation with silent photo compression
-│   ├── my-ads/page.tsx           # Seller dashboard (strictly isolated, Mark as Sold, Delete)
-│   └── admin/page.tsx            # Dedicated Supervisor Console (Approvals, ISO, Student Tracking, CSV)
+├── 🎨 FRONTEND (Safe to edit & style):
+│   ├── components/               # Modular UI Elements (Designers & Frontend Devs edit here)
+│   │   ├── ListingCard.tsx       # Product card display, badges, heart button
+│   │   ├── ProductDetailModal.tsx# Photo carousel, condition specs, WhatsApp CTA
+│   │   ├── ProfileModal.tsx      # Student room & WhatsApp contact updater
+│   │   ├── ISOModal.tsx          # "Looking For" wanted request popup
+│   │   ├── MarketplaceSidebar.tsx# Left navigation, wing filters, user persona
+│   │   └── index.ts              # Clean barrel export for components
+│   │
+│   ├── app/                      # Page Routes (Next.js App Router orchestration)
+│   │   ├── layout.tsx            # HTML shell, Google Fonts (Inter), CSS stylesheets
+│   │   ├── page.tsx              # Main marketplace feed & campus trends
+│   │   ├── login/page.tsx        # Student registration & supervisor login
+│   │   ├── sell/page.tsx         # 3-step listing creation with silent photo compression
+│   │   ├── my-ads/page.tsx       # Seller dashboard (Mark as Sold, Delete, Resubmit)
+│   │   └── admin/page.tsx        # Dedicated Supervisor Console (Approvals, ISO, Cloud Sync)
+│   │
+│   └── styles/                   # Design System & Styling (100% Safe to tweak)
+│       ├── globals.css           # CSS variables, buttons, modals, input styles
+│       ├── chrono-theme.css      # Responsive 3-column layout, cards, carousels
+│       ├── olx-components.css    # Sidebar navigation buttons, status indicators, badges
+│       └── theme.css             # HSL color tokens and utility classes
 │
-├── lib/
-│   ├── dataStore.ts              # Central reactive data layer (CRUD, auth, reactivity, audit)
-│   ├── compression.ts            # Client-side image compression (Canvas → WebP)
-│   ├── whatsapp.ts               # WhatsApp wa.me/ deep link generator with deal negotiation prefill
-│   ├── exportCsv.ts              # RFC-4180 CSV generator and browser file download
-│   ├── auth.ts                   # JWT token creation and verification via jose
-│   ├── validations.ts            # Zod validation schemas for forms
-│   └── supabase.ts               # Optional Supabase client initialization
+├── ⚙️ BACKEND & SERVICES (Core Engine):
+│   ├── lib/
+│   │   ├── dataStore.ts          # Central reactive data layer (CRUD, auth, reactivity, audit)
+│   │   ├── auth.ts               # JWT token creation and verification via jose
+│   │   ├── whatsapp.ts           # WhatsApp wa.me/ deep link generator with deal negotiation prefill
+│   │   ├── compression.ts        # Client-side image compression (Canvas → WebP)
+│   │   ├── exportCsv.ts          # RFC-4180 CSV generator and browser file download
+│   │   ├── validations.ts        # Zod validation schemas for forms
+│   │   ├── supabase.ts           # Supabase client initialization
+│   │   └── index.ts              # Unified backend barrel export
+│   │
+│   └── supabase/
+│       └── schema.sql            # PostgreSQL database schema with RLS security policies
 │
-├── styles/
-│   ├── globals.css               # CSS variables, base button, modal, and input styles
-│   ├── chrono-theme.css          # 3-column desktop layout, cards, carousels, responsive grid
-│   ├── olx-components.css        # Sidebar navigation buttons, status indicators, badges
-│   └── theme.css                 # Color tokens and component utility classes
-│
-└── types/
-    └── index.ts                  # TypeScript interfaces: Listing, StudentAccount, UserAuditRecord, etc.
+└── 📦 SHARED CONTRACTS:
+    └── types/
+        └── index.ts              # TypeScript interfaces: Listing, StudentAccount, UserAuditRecord
 ```
 
 ---
