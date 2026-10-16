@@ -10,7 +10,7 @@ interface ProfileModalProps {
     phone?: string;
     hostelBlock?: string;
     roomNumber?: string;
-    role?: string;
+    role: 'user' | 'admin';
   };
   onClose: () => void;
   onSuccess: (updated: {
@@ -18,7 +18,7 @@ interface ProfileModalProps {
     phone?: string;
     hostelBlock?: string;
     roomNumber?: string;
-    role?: string;
+    role: 'user' | 'admin';
   }) => void;
   showToast: (msg: string) => void;
 }
@@ -55,9 +55,15 @@ export default function ProfileModal({
     });
 
     if (res.success && res.user) {
-      const updatedUser = {
+      const updatedUser: {
+        username: string;
+        role: 'user' | 'admin';
+        phone?: string;
+        hostelBlock?: string;
+        roomNumber?: string;
+      } = {
         username: res.user.username,
-        role: res.user.role || 'user',
+        role: (res.user.role as 'user' | 'admin') || 'user',
         phone: res.user.phone,
         hostelBlock: res.user.hostelBlock,
         roomNumber: res.user.roomNumber
