@@ -235,9 +235,10 @@ body {
 .feed-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 16px;
-  gap: 16px;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .feed-title {
@@ -245,12 +246,13 @@ body {
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--text-main);
+  line-height: 1.2;
 }
 
 .feed-subtitle {
   font-size: 0.82rem;
   color: var(--text-dim);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 /* Mode Switch Tabs */
@@ -284,16 +286,45 @@ body {
 }
 
 /* Controls: Search + Sort */
-.controls-row {
+.controls-row,
+.search-bar-row {
   display: flex;
   gap: 12px;
   margin-bottom: 14px;
   align-items: center;
+  width: 100%;
 }
 
 .search-input-wrap {
   flex: 1;
   position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: 0.88rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px var(--accent-blue-glow);
 }
 
 .sort-select {
@@ -306,30 +337,37 @@ body {
   outline: none;
   cursor: pointer;
   font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .sort-select:focus {
   border-color: var(--accent-blue);
 }
 
-/* Category Filter Row (Explicit Spacing & Clear Padding) */
-.chrono-filter-row {
+/* Category Filter Row (Single-row sleek horizontal scroll) */
+.chrono-filter-row,
+.chrono-pill-row {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 6px 0;
-  margin-bottom: 18px; /* Clean gap before cards start */
+  white-space: nowrap;
+  flex-wrap: nowrap;
+  padding: 4px 2px 14px 2px;
+  margin-bottom: 12px;
   scrollbar-width: none;
-  min-height: 44px;
+  -ms-overflow-style: none;
   align-items: center;
+  width: 100%;
 }
 
-.chrono-filter-row::-webkit-scrollbar {
+.chrono-filter-row::-webkit-scrollbar,
+.chrono-pill-row::-webkit-scrollbar {
   display: none;
 }
 
 .chrono-pill {
-  padding: 7px 16px;
+  padding: 7px 15px;
   border-radius: var(--radius-pill);
   font-size: 0.82rem;
   font-weight: 600;
@@ -338,6 +376,7 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.15s ease;
   line-height: 1;
 }
@@ -362,11 +401,11 @@ body {
   border-color: var(--accent-emerald);
 }
 
-/* Product Cards Grid: Natural 4:3 Ratio */
+/* Product Cards Grid: Responsive 2-4 Compact Columns */
 .chrono-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 16px;
   margin-top: 4px;
 }
 
@@ -385,15 +424,18 @@ body {
 .chrono-card:hover {
   transform: translateY(-3px);
   border-color: rgba(59, 130, 246, 0.45);
-  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 14px 28px -6px rgba(0, 0, 0, 0.65);
 }
 
 .chrono-card-img-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  height: 165px;
   background: #06090f;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .chrono-card-img {
@@ -475,13 +517,17 @@ body {
   text-overflow: ellipsis;
 }
 
+.card-footer-meta,
 .card-meta-line {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
   font-size: 0.8rem;
   color: var(--text-dim);
-  margin-top: 2px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .card-tap-hint {
@@ -496,8 +542,11 @@ body {
 }
 
 /* 3. Right Sidebar (Chrono Trending Insights) */
-.chrono-right-drawer {
-  width: 280px;
+.chrono-right-drawer,
+.chrono-insights {
+  width: 290px;
+  min-width: 270px;
+  max-width: 310px;
   flex-shrink: 0;
   height: 100vh;
   overflow-y: auto;
@@ -688,13 +737,34 @@ body {
   margin: 6px 0;
 }
 
-/* Mobile Breakpoints */
-@media (max-width: 1024px) {
-  .chrono-right-drawer { display: none; }
+/* Responsive Breakpoints */
+@media (max-width: 1100px) {
+  .chrono-right-drawer,
+  .chrono-insights {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
-  .chrono-sidebar { display: none; }
-  .chrono-main { padding: 16px 14px 90px 14px; }
-  .controls-row { flex-direction: column; }
+  .chrono-sidebar {
+    display: none;
+  }
+  .chrono-main {
+    padding: 16px 14px 90px 14px;
+  }
+  .controls-row,
+  .search-bar-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sort-select {
+    width: 100%;
+  }
+  .chrono-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .chrono-card-img-wrap {
+    height: 140px;
+  }
 }
