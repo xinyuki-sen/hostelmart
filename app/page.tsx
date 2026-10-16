@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { Listing, ISORequest } from '@/types';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
 import { 
   getStoredListings, 
   getStoredISORequests, 
-  createISORequest,
+  createISORequest, 
   subscribeToStore,
   SEED_LISTINGS,
   SEED_ISO 
@@ -24,6 +25,7 @@ interface UserState {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const [user, setUser] = useState<UserState | null>(null);
   const [listings, setListings] = useState<Listing[]>(INITIAL_LISTINGS);
   const [isoRequests, setIsoRequests] = useState<ISORequest[]>(INITIAL_ISO);
@@ -56,7 +58,13 @@ export default function HomePage() {
     try {
       const stored = localStorage.getItem('hostelmart_user');
       if (stored) {
-        setUser(JSON.parse(stored));
+        const u = JSON.parse(stored);
+        // If an admin is logged in, redirect directly to their dedicated admin portal
+        if (u.role === 'admin') {
+          router.replace('/admin');
+          return;
+        }
+        setUser(u);
       }
     } catch {
       // ignore
@@ -68,7 +76,7 @@ export default function HomePage() {
     });
 
     return () => unsubscribe();
-  }, [loadData]);
+  }, [loadData, router]);
 
   const handleLogout = () => {
     localStorage.removeItem('hostelmart_user');
@@ -192,19 +200,6 @@ export default function HomePage() {
               {user ? myAdsCount : 0}
             </span>
           </Link>
-
-          {/* ADMIN LINK: ONLY VISIBLE IF LOGGED IN AS ADMIN! NEVER VISIBLE TO STUDENTS! */}
-          {user?.role === 'admin' && (
-            <div style={{ marginTop: 8, padding: '8px 4px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.25)' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#f87171', padding: '0 8px 4px 8px', textTransform: 'uppercase' }}>🛡️ Supervisor Only</div>
-              <Link href="/admin" className="chrono-nav-btn" style={{ color: '#fca5a5' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>📊</span>
-                  <span>Supervisor Hub</span>
-                </div>
-              </Link>
-            </div>
-          )}
 
           <div className="nav-section-title">Hostel Wings</div>
           <div className="wing-item">

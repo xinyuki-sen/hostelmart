@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+import { recordUserLogin } from '@/lib/dataStore';
+
 export default function LoginPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'student' | 'admin'>('student');
@@ -25,21 +27,24 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!username || !password) {
+    const cleanUsername = username.trim();
+    if (!cleanUsername || !password) {
       setErrorMsg('Username and password are required.');
       return;
     }
 
+    const studentId = `u-${cleanUsername.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
     const studentUser = {
-      id: 'u-local',
-      username,
-      phone,
-      hostelBlock,
-      roomNumber,
-      role: 'user'
+      id: studentId,
+      username: cleanUsername,
+      phone: phone.trim() || '9876543210',
+      hostelBlock: hostelBlock.trim() || 'Block B',
+      roomNumber: roomNumber.trim() || '101',
+      role: 'user' as const
     };
 
     localStorage.setItem('hostelmart_user', JSON.stringify(studentUser));
+    recordUserLogin(studentUser);
     router.push('/');
   };
 
@@ -53,14 +58,15 @@ export default function LoginPage() {
 
     if (validAdmins.includes(adminUsername) && validPasses.includes(adminPassword)) {
       const adminUser = {
-        id: 'admin-local',
+        id: `admin-${adminUsername.toLowerCase()}`,
         username: adminUsername,
-        role: 'admin',
-        hostelBlock: 'AdminBlock',
+        role: 'admin' as const,
+        hostelBlock: 'Supervisor Office',
         roomNumber: '101'
       };
 
       localStorage.setItem('hostelmart_user', JSON.stringify(adminUser));
+      recordUserLogin(adminUser);
       router.push('/admin'); // Direct to Supervisor Hub
     } else {
       setErrorMsg('Invalid supervisor credentials. (Hint: AdminA / 123456)');

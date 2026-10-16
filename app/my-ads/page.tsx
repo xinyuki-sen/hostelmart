@@ -47,10 +47,9 @@ export default function MyAdsPage() {
     const all = await getStoredListings();
     const uname = user.username.trim().toLowerCase();
 
-    // STRICT filter by logged-in user's username
+    // STRICT filter: ONLY items where sellerName matches this exact username!
     const matching = all.filter(item => 
-      (item.sellerName && item.sellerName.trim().toLowerCase() === uname) ||
-      (item.sellerId && user.id && item.sellerId === user.id)
+      Boolean(item.sellerName && item.sellerName.trim().toLowerCase() === uname)
     );
 
     setUserListings(matching);
@@ -71,14 +70,14 @@ export default function MyAdsPage() {
   };
 
   const handleToggleSold = async (id: string) => {
-    const nextStatus = await toggleSoldStatus(id);
+    const nextStatus = await toggleSoldStatus(id, currentUser?.username);
     showToast(nextStatus === 'sold' ? 'Item marked as SOLD! Updated on live marketplace feed.' : 'Item re-activated on marketplace feed.');
     loadListings();
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this listing?')) {
-      await deleteListing(id);
+      await deleteListing(id, currentUser?.username);
       showToast('Item deleted successfully.');
       loadListings();
     }

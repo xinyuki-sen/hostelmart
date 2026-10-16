@@ -56,11 +56,11 @@ export default function SellPage() {
           showToast('Maximum 4 photos allowed per listing.');
           break;
         }
-        // Client-side silent WebP auto-compression
-        const base64Url = await compressImageToBase64(file, { maxWidth: 1000, quality: 0.72 });
+        // Client-side silent WebP auto-compression to lightweight size
+        const base64Url = await compressImageToBase64(file, { maxWidth: 640, maxHeight: 640, quality: 0.65 });
         setPhotos(prev => [...prev, base64Url]);
       }
-      showToast('⚡ Photos compressed silently (10MB ➔ ~120KB WebP)');
+      showToast('⚡ Photo compressed successfully (lightweight WebP)');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Photo upload failed';
       showToast(message);
