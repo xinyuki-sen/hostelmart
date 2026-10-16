@@ -129,6 +129,10 @@ export default function HomePage() {
     filteredListings.sort((a, b) => b.price - a.price);
   }
 
+  const myAdsCount = user && user.username
+    ? listings.filter(i => i.sellerName && i.sellerName.trim().toLowerCase() === user.username.trim().toLowerCase()).length
+    : 0;
+
   return (
     <div className="chrono-layout">
       {/* 1. Left Sidebar */}
@@ -177,7 +181,16 @@ export default function HomePage() {
               <span>📦</span>
               <span>My Listed Ads</span>
             </div>
-            <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>2</span>
+            <span style={{ 
+              fontSize: 11, 
+              fontWeight: 700,
+              padding: myAdsCount > 0 ? '1px 7px' : '0',
+              borderRadius: 9999,
+              background: myAdsCount > 0 ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+              color: myAdsCount > 0 ? '#60a5fa' : 'var(--text-dim)' 
+            }}>
+              {user ? myAdsCount : 0}
+            </span>
           </Link>
 
           {/* ADMIN LINK: ONLY VISIBLE IF LOGGED IN AS ADMIN! NEVER VISIBLE TO STUDENTS! */}
@@ -327,112 +340,150 @@ export default function HomePage() {
 
         {/* Listings Grid (Natural 4:3 Ratio, Tap-to-View) */}
         {mode === 'market' ? (
-          <div className="chrono-grid">
-            {filteredListings.map(item => {
-              const isFree = item.price === 0;
-              const isSold = item.status === 'sold';
-              const coverImg = item.images && item.images.length > 0 ? item.images[0] : '';
+          filteredListings.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '64px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-card)', margin: '16px 0' }}>
+              <div style={{ fontSize: '3.2rem', marginBottom: 12 }}>📦</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: 6 }}>
+                {searchQuery || category !== 'all' ? 'No Matching Items' : 'No Items Listed on Campus Yet'}
+              </h3>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-dim)', maxWidth: 440, margin: '0 auto 24px auto', lineHeight: 1.5 }}>
+                {searchQuery || category !== 'all' 
+                  ? 'No items match your active search or category filters. Try clearing your filters or search keywords.'
+                  : 'Be the first student to post an item for sale or give away room essentials to juniors!'}
+              </p>
+              <Link href="/sell" className="btn btn-primary" style={{ padding: '10px 24px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span>⚡</span>
+                <span>Post the First Item</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="chrono-grid">
+              {filteredListings.map(item => {
+                const isFree = item.price === 0;
+                const isSold = item.status === 'sold';
+                const coverImg = item.images && item.images.length > 0 ? item.images[0] : '';
 
-              return (
-                <div 
-                  key={item.id} 
-                  className="chrono-card"
-                  style={{ opacity: isSold ? 0.65 : 1 }}
-                  onClick={() => {
-                    setSelectedListing(item);
-                    setCarouselIndex(0);
-                  }}
-                >
-                  <div className="chrono-card-img-wrap">
-                    {item.isUrgent && <div className="urgent-banner">🔥 48h MOVING OUT CLEARANCE</div>}
-                    <img src={coverImg} className="chrono-card-img" alt={item.title} />
-                    
-                    <div className="photo-count-badge">📷 {item.images ? item.images.length : 1}</div>
-                    
-                    <button 
-                      className={`card-heart-btn ${item.isLiked ? 'liked' : ''}`}
-                      onClick={(e) => toggleHeart(item.id, e)}
-                    >
-                      {item.isLiked ? '❤️' : '🤍'}
-                    </button>
+                return (
+                  <div 
+                    key={item.id} 
+                    className="chrono-card"
+                    style={{ opacity: isSold ? 0.65 : 1 }}
+                    onClick={() => {
+                      setSelectedListing(item);
+                      setCarouselIndex(0);
+                    }}
+                  >
+                    <div className="chrono-card-img-wrap">
+                      {item.isUrgent && <div className="urgent-banner">🔥 48h MOVING OUT CLEARANCE</div>}
+                      <img src={coverImg} className="chrono-card-img" alt={item.title} />
+                      
+                      <div className="photo-count-badge">📷 {item.images ? item.images.length : 1}</div>
+                      
+                      <button 
+                        className={`card-heart-btn ${item.isLiked ? 'liked' : ''}`}
+                        onClick={(e) => toggleHeart(item.id, e)}
+                      >
+                        {item.isLiked ? '❤️' : '🤍'}
+                      </button>
 
-                    <div style={{ position: 'absolute', bottom: 8, left: 8, display: 'flex', gap: 6 }}>
-                      {isSold ? (
-                        <span className="badge badge-sold">SOLD ✓</span>
-                      ) : isFree ? (
-                        <span className="badge badge-free">FREE 🎁</span>
-                      ) : (
-                        <span className={`badge ${item.isNegotiable ? 'badge-negotiable' : 'badge-fixed'}`}>
-                          {item.isNegotiable ? 'Negotiable' : 'Fixed'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="chrono-card-body">
-                    <div className="card-price-row">
-                      <div className={`item-price ${isFree ? 'price-free' : ''}`}>
-                        {isFree ? 'FREE' : `₹${item.price.toLocaleString()}`}
+                      <div style={{ position: 'absolute', bottom: 8, left: 8, display: 'flex', gap: 6 }}>
+                        {isSold ? (
+                          <span className="badge badge-sold">SOLD ✓</span>
+                        ) : isFree ? (
+                          <span className="badge badge-free">FREE 🎁</span>
+                        ) : (
+                          <span className={`badge ${item.isNegotiable ? 'badge-negotiable' : 'badge-fixed'}`}>
+                            {item.isNegotiable ? 'Negotiable' : 'Fixed'}
+                          </span>
+                        )}
                       </div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{item.condition}</span>
                     </div>
 
-                    <div className="card-title" title={item.title}>{item.title}</div>
+                    <div className="chrono-card-body">
+                      <div className="card-price-row">
+                        <div className={`item-price ${isFree ? 'price-free' : ''}`}>
+                          {isFree ? 'FREE' : `₹${item.price.toLocaleString()}`}
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{item.condition}</span>
+                      </div>
 
-                    <div className="card-meta-line">
-                      <span>📍 {item.hostelBlock} • Rm {item.roomNumber}</span>
-                      <span>•</span>
-                      <span>{item.timeAgo}</span>
-                    </div>
+                      <div className="card-title" title={item.title}>{item.title}</div>
 
-                    <div className="card-tap-hint">
-                      <span>Verified resident</span>
-                      <span style={{ color: '#60a5fa', fontWeight: 600 }}>View Details →</span>
+                      <div className="card-meta-line">
+                        <span>📍 {item.hostelBlock} • Rm {item.roomNumber}</span>
+                        <span>•</span>
+                        <span>{item.timeAgo}</span>
+                      </div>
+
+                      <div className="card-tap-hint">
+                        <span>Verified resident</span>
+                        <span style={{ color: '#60a5fa', fontWeight: 600 }}>View Details →</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )
         ) : (
           /* Looking For (ISO) Grid */
-          <div className="chrono-grid">
-            {isoRequests.map(req => {
-              const waLink = `https://wa.me/91${req.requesterPhone}?text=${encodeURIComponent(
-                `Hey! I saw your request for "${req.title}" on HostelMart.\nI have one available in ${req.location}! Let's connect.`
-              )}`;
+          isoRequests.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '64px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-card)', margin: '16px 0' }}>
+              <div style={{ fontSize: '3.2rem', marginBottom: 12 }}>🔍</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: 6 }}>
+                No Wanted Requests Yet
+              </h3>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-dim)', maxWidth: 440, margin: '0 auto 24px auto', lineHeight: 1.5 }}>
+                Looking for a kettle, scientific calculator, cycle, or engineering textbooks? Post a request and hostel mates with spare items can message you on WhatsApp!
+              </p>
+              <button 
+                onClick={() => setShowIsoModal(true)} 
+                className="btn btn-primary" 
+                style={{ padding: '10px 24px', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              >
+                <span>✨</span>
+                <span>Post a Wanted Request</span>
+              </button>
+            </div>
+          ) : (
+            <div className="chrono-grid">
+              {isoRequests.map(req => {
+                const waLink = `https://wa.me/91${req.requesterPhone}?text=${encodeURIComponent(
+                  `Hey! I saw your request for "${req.title}" on HostelMart.\nI have one available in ${req.location}! Let's connect.`
+                )}`;
 
-              return (
-                <div key={req.id} className="chrono-card" style={{ cursor: 'default' }}>
-                  <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10, height: '100%' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' }}>WANTED</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{req.createdAt}</span>
-                    </div>
+                return (
+                  <div key={req.id} className="chrono-card" style={{ cursor: 'default' }}>
+                    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10, height: '100%' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' }}>WANTED</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{req.createdAt}</span>
+                      </div>
 
-                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>{req.title}</div>
-                    
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--bg-surface-elevated)', padding: '8px 12px', borderRadius: 6 }}>
-                      ⏰ <strong>Needed by:</strong> {req.urgency}
-                    </div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>{req.title}</div>
+                      
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--bg-surface-elevated)', padding: '8px 12px', borderRadius: 6 }}>
+                        ⏰ <strong>Needed by:</strong> {req.urgency}
+                      </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Budget:</span>
-                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#34d399' }}>₹{req.budget}</span>
-                    </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Budget:</span>
+                        <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#34d399' }}>₹{req.budget}</span>
+                      </div>
 
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>📍 Requested by: {req.requesterName} ({req.location})</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>📍 Requested by: {req.requesterName} ({req.location})</div>
 
-                    <div style={{ marginTop: 'auto', paddingTop: 10 }}>
-                      <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn btn-whatsapp" style={{ width: '100%' }}>
-                        <span>💬 I Have This! Message</span>
-                      </a>
+                      <div style={{ marginTop: 'auto', paddingTop: 10 }}>
+                        <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn btn-whatsapp" style={{ width: '100%' }}>
+                          <span>💬 I Have This! Message</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )
         )}
       </main>
 

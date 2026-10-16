@@ -11,153 +11,11 @@ const LISTINGS_STORAGE_KEY = 'hostelmart_listings_v2';
 const ISO_STORAGE_KEY = 'hostelmart_iso_v2';
 const EVENT_DATA_CHANGED = 'hostelmart_data_changed';
 
-export const SEED_LISTINGS: Listing[] = [
-  {
-    id: "101",
-    sellerId: "u-1",
-    sellerName: "rahul_k",
-    sellerPhone: "9876543210",
-    hostelBlock: "Block B",
-    roomNumber: "304",
-    title: "Havells 1.2L Electric Kettle (Quick Boil)",
-    description: "Heats 1.2L of water in under 2 minutes. Auto-cut off works properly. Perfect for late-night Maggi, coffee, and green tea in the room.",
-    price: 450,
-    isNegotiable: true,
-    isUrgent: true,
-    condition: "Gently Used",
-    category: "room_essentials",
-    images: [
-      "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1585338107529-13afc5f02586?auto=format&fit=crop&w=600&q=80"
-    ],
-    status: "active",
-    isLiked: false,
-    timeAgo: "25m ago",
-    createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "102",
-    sellerId: "u-2",
-    sellerName: "aditya_m",
-    sellerPhone: "9876543211",
-    hostelBlock: "Block A",
-    roomNumber: "112",
-    title: "Hercules 21-Speed Mountain Bicycle",
-    description: "Dual disk brakes with front suspension. Recently serviced with new tire tubes. Includes free cycle cable lock.",
-    price: 2400,
-    isNegotiable: true,
-    isUrgent: false,
-    condition: "Like New",
-    category: "mobility_fitness",
-    images: [
-      "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?auto=format&fit=crop&w=600&q=80"
-    ],
-    status: "active",
-    isLiked: false,
-    timeAgo: "2h ago",
-    createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "103",
-    sellerId: "u-3",
-    sellerName: "vikram_t",
-    sellerPhone: "9876543212",
-    hostelBlock: "Block C",
-    roomNumber: "201",
-    title: "GATE CSE Reference Books (Set of 6)",
-    description: "Contains Cormen Algorithms, Tanenbaum Computer Networks, and Galvin Operating Systems. Free handwritten notes included.",
-    price: 750,
-    isNegotiable: false,
-    isUrgent: false,
-    condition: "Well Used",
-    category: "books_academics",
-    images: [
-      "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=600&q=80"
-    ],
-    status: "active",
-    isLiked: false,
-    timeAgo: "Yesterday",
-    createdAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "104",
-    sellerId: "u-4",
-    sellerName: "kartik_p",
-    sellerPhone: "9876543213",
-    hostelBlock: "Block B",
-    roomNumber: "410",
-    title: "Plastic Clothes Hangers (Set of 10)",
-    description: "Graduating this weekend! Giving away 10 sturdy hangers and laundry mesh for free. First come, first served.",
-    price: 0,
-    isNegotiable: false,
-    isUrgent: true,
-    condition: "Gently Used",
-    category: "room_essentials",
-    images: [
-      "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=600&q=80"
-    ],
-    status: "active",
-    isLiked: false,
-    timeAgo: "3h ago",
-    createdAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "105",
-    sellerId: "u-5",
-    sellerName: "siddharth_r",
-    sellerPhone: "9876543214",
-    hostelBlock: "Block D",
-    roomNumber: "108",
-    title: "Krups 2-Slice Bread Toaster (Clean)",
-    description: "Hardly used for 2 months. 6 browning levels, removable crumb tray, works perfectly for morning breakfast.",
-    price: 600,
-    isNegotiable: true,
-    isUrgent: false,
-    condition: "Like New",
-    category: "room_essentials",
-    images: [
-      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=600&q=80"
-    ],
-    status: "pending",
-    isLiked: false,
-    adminNote: "Check electrical heating element compliance with hostel safety regulations.",
-    timeAgo: "Just now",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
+export const SEED_LISTINGS: Listing[] = [];
+export const SEED_ISO: ISORequest[] = [];
 
-export const SEED_ISO: ISORequest[] = [
-  {
-    id: "iso-1",
-    requesterId: "u-1",
-    requesterName: "rahul_k",
-    requesterPhone: "9876543210",
-    title: "Casio fx-991EX Scientific Calculator",
-    budget: 500,
-    location: "Block B, Room 214",
-    urgency: "Tonight before 10 PM (Maths Exam tomorrow)",
-    status: "active",
-    createdAt: "40m ago"
-  },
-  {
-    id: "iso-2",
-    requesterId: "u-5",
-    requesterName: "manish_s",
-    requesterPhone: "9876543211",
-    title: "Engineering Mini Drafter & Clips",
-    budget: 250,
-    location: "Block A, Room 105",
-    urgency: "Needed for Engineering Drawing practicals",
-    status: "active",
-    createdAt: "3h ago"
-  }
-];
+const DEMO_LISTING_IDS = new Set(['101', '102', '103', '104', '105']);
+const DEMO_ISO_IDS = new Set(['iso-1', 'iso-2']);
 
 // Helper: dispatch cross-component refresh event
 function notifyStoreChanged() {
@@ -187,23 +45,26 @@ function hasValidSupabase(): boolean {
  * Fetch all listings from Local Storage or Supabase
  */
 export async function getStoredListings(): Promise<Listing[]> {
-  if (typeof window === 'undefined') return SEED_LISTINGS;
+  if (typeof window === 'undefined') return [];
 
   try {
     const raw = localStorage.getItem(LISTINGS_STORAGE_KEY);
     if (raw) {
       const parsed: Listing[] = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        // Strip out any previously seeded demo items
+        const clean = parsed.filter(item => !DEMO_LISTING_IDS.has(item.id));
+        if (clean.length !== parsed.length) {
+          saveListingsToLocal(clean);
+        }
+        return clean;
       }
     }
   } catch (err) {
     console.warn('[HostelMart] Failed to read from localStorage:', err);
   }
 
-  // Initialize with seed data if empty
-  saveListingsToLocal(SEED_LISTINGS);
-  return SEED_LISTINGS;
+  return [];
 }
 
 function saveListingsToLocal(listings: Listing[]): void {
@@ -383,22 +244,25 @@ export async function deleteListing(id: string): Promise<Listing[]> {
 // --------------------------------------------------------------------
 
 export async function getStoredISORequests(): Promise<ISORequest[]> {
-  if (typeof window === 'undefined') return SEED_ISO;
+  if (typeof window === 'undefined') return [];
 
   try {
     const raw = localStorage.getItem(ISO_STORAGE_KEY);
     if (raw) {
       const parsed: ISORequest[] = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        const clean = parsed.filter(item => !DEMO_ISO_IDS.has(item.id));
+        if (clean.length !== parsed.length) {
+          saveISOToLocal(clean);
+        }
+        return clean;
       }
     }
   } catch (err) {
     console.warn('[HostelMart] Failed to read ISO requests:', err);
   }
 
-  saveISOToLocal(SEED_ISO);
-  return SEED_ISO;
+  return [];
 }
 
 function saveISOToLocal(requests: ISORequest[]): void {

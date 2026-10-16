@@ -10,11 +10,11 @@ export default function LoginPage() {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
 
   // Student Fields
-  const [username, setUsername] = useState('rahul_k');
-  const [phone, setPhone] = useState('9876543210');
-  const [password, setPassword] = useState('password123');
+  const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [hostelBlock, setHostelBlock] = useState('Block B');
-  const [roomNumber, setRoomNumber] = useState('304');
+  const [roomNumber, setRoomNumber] = useState('');
 
   // Admin Fields
   const [adminUsername, setAdminUsername] = useState('AdminA');

@@ -13,18 +13,15 @@ export default function SellPage() {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<'room_essentials' | 'electronics' | 'books_academics' | 'mobility_fitness' | 'clothing_fashion' | 'other'>('room_essentials');
   const [condition, setCondition] = useState<'Like New' | 'Gently Used' | 'Well Used'>('Gently Used');
-  const [price, setPrice] = useState<number | string>(450);
+  const [price, setPrice] = useState<number | string>('');
   const [hostelBlock, setHostelBlock] = useState('Block B');
-  const [roomNumber, setRoomNumber] = useState('304');
+  const [roomNumber, setRoomNumber] = useState('');
   const [description, setDescription] = useState('');
   const [isNegotiable, setIsNegotiable] = useState(true);
   const [isUrgent, setIsUrgent] = useState(false);
 
-  // Photo state
-  const [photos, setPhotos] = useState<string[]>([
-    "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
-    "https://images.unsplash.com/photo-1585338107529-13afc5f02586?auto=format&fit=crop&w=600&q=80"
-  ]);
+  // Photo state (clean start, no demo images)
+  const [photos, setPhotos] = useState<string[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -73,15 +70,20 @@ export default function SellPage() {
   };
 
   const removePhoto = (index: number) => {
-    if (photos.length <= 1) {
-      showToast('At least 1 photo is required.');
-      return;
-    }
     setPhotos(prev => prev.filter((_, idx) => idx !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!currentUser || !currentUser.username) {
+      showToast('⚠️ Please sign in first so your item appears in your "My Listed Ads" dashboard!');
+      setTimeout(() => {
+        router.push('/login');
+      }, 1500);
+      return;
+    }
+
     if (!title.trim()) {
       showToast('Please enter an item title.');
       return;
@@ -99,14 +101,14 @@ export default function SellPage() {
         condition,
         price: Number(price) || 0,
         hostelBlock,
-        roomNumber,
+        roomNumber: roomNumber || '101',
         description: description.trim() || 'No description provided.',
         isNegotiable,
         isUrgent,
         images: photos,
-        sellerName: currentUser?.username || 'rahul_k',
-        sellerPhone: currentUser?.phone || '9876543210',
-        sellerId: currentUser?.id || 'u-local'
+        sellerName: currentUser.username,
+        sellerPhone: currentUser.phone || '9876543210',
+        sellerId: currentUser.id || `u-${currentUser.username}`
       });
 
       showToast('🚀 Listing submitted! Successfully queued in Supervisor Moderation Hub.');
@@ -134,6 +136,15 @@ export default function SellPage() {
             ✕ Cancel
           </Link>
         </div>
+
+        {!currentUser && (
+          <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: 10, color: '#93c5fd', fontSize: '0.84rem', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>👤 You are currently browsing as <strong>Guest</strong>.</span>
+            <Link href="/login" style={{ color: '#60a5fa', fontWeight: 700, textDecoration: 'underline' }}>
+              Sign In to Post →
+            </Link>
+          </div>
+        )}
 
         <div className="modal-card" style={{ maxWidth: '100%' }}>
           <form onSubmit={handleSubmit}>
