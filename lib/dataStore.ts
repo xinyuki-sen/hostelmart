@@ -281,7 +281,162 @@ export async function deleteListing(id: string, requesterUsername?: string): Pro
 }
 
 // --------------------------------------------------------------------
-// 2. USER LOGIN & ACTIVITY TRACKING API
+// 2. STUDENT ACCOUNTS & AUTHENTICATION DATABASE
+// --------------------------------------------------------------------
+
+const STUDENTS_DB_KEY = 'hostelmart_student_accounts_v2';
+
+export interface StudentAccount {
+  id: string;
+  username: string;
+  phone: string;
+  hostelBlock: string;
+  roomNumber: string;
+  password: string;
+  role: 'user';
+  createdAt: string;
+  lastLogin: string;
+}
+
+/**
+ * Returns all registered student accounts from database
+ */
+export function getRegisteredStudents(): StudentAccount[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STUDENTS_DB_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+/**
+ * Registers a new student account in the system database
+ */
+export async function registerStudentAccount(data: {
+  username: string;
+  phone: string;
+  hostelBlock: string;
+  roomNumber: string;
+  password: string;
+}): Promise<{ success: boolean; user?: StudentAccount; error?: string }> {
+  const cleanUsername = data.username.trim();
+  const cleanPhone = data.phone.trim();
+  const cleanBlock = data.hostelBlock.trim();
+  const cleanRoom = data.roomNumber.trim();
+  const cleanPass = data.password.trim();
+
+  if (!cleanUsername) return { success: false, error: 'Username is required.' };
+  if (cleanUsername.length < 3) return { success: false, error: 'Username must be at least 3 characters.' };
+  if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
+    return { success: false, error: 'Username can only contain letters, numbers, and underscores.' };
+  }
+  
+  if (!cleanPhone || cleanPhone.replace(/\D/g, '').length < 10) {
+    return { success: false, error: 'Please enter a valid 10-digit mobile number for WhatsApp verification.' };
+  }
+  if (!cleanBlock) return { success: false, error: 'Hostel block is required.' };
+  if (!cleanRoom) return { success: false, error: 'Room number is required.' };
+  if (!cleanPass || cleanPass.length < 4) {
+    return { success: false, error: 'Password must be at least 4 characters.' };
+  }
+
+  const existing = getRegisteredStudents();
+  const duplicate = existing.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase());
+  if (duplicate) {
+    return { 
+      success: false, 
+      error: `The username "@${cleanUsername}" is already registered. Please sign in instead.` 
+    };
+  }
+
+  const newStudent: StudentAccount = {
+    id: `u-${cleanUsername.toLowerCase().replace(/[^a-z0-9]/g, '_')}-${Date.now()}`,
+    username: cleanUsername,
+    phone: cleanPhone,
+    hostelBlock: cleanBlock,
+    roomNumber: cleanRoom,
+    password: cleanPass,
+    role: 'user',
+    createdAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString()
+  };
+
+  const updated = [newStudent, ...existing];
+  try {
+    localStorage.setItem(STUDENTS_DB_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.error('Failed to save student account:', err);
+  }
+
+  // Also sync with Supabase users table if credentials exist
+  if (hasValidSupabase()) {
+    try {
+      supabase.from('users').insert([{
+        username: newStudent.username,
+        phone: newStudent.phone,
+        hostel_block: newStudent.hostelBlock,
+        room_number: newStudent.roomNumber,
+        role: 'user',
+        password_hash: newStudent.password
+      }]).then(() => {});
+    } catch {}
+  }
+
+  // Record in audit log
+  recordUserLogin(newStudent);
+
+  return { success: true, user: newStudent };
+}
+
+/**
+ * Authenticates a student against the registered database
+ * Strictly rejects non-registered users or wrong passwords
+ */
+export async function authenticateStudent(data: {
+  username: string;
+  password: string;
+}): Promise<{ success: boolean; user?: StudentAccount; error?: string }> {
+  const cleanUsername = data.username.trim();
+  const cleanPass = data.password.trim();
+
+  if (!cleanUsername) return { success: false, error: 'Please enter your username.' };
+  if (!cleanPass) return { success: false, error: 'Please enter your password.' };
+
+  const students = getRegisteredStudents();
+  const matched = students.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase());
+
+  if (!matched) {
+    return {
+      success: false,
+      error: `Account "@${cleanUsername}" not found. Please click "Register now" to create your student account.`
+    };
+  }
+
+  if (matched.password !== cleanPass) {
+    return {
+      success: false,
+      error: `Incorrect password for @${cleanUsername}. Please try again.`
+    };
+  }
+
+  // Update last login
+  matched.lastLogin = new Date().toISOString();
+  try {
+    localStorage.setItem(STUDENTS_DB_KEY, JSON.stringify(students));
+  } catch {}
+
+  // Record audit log
+  recordUserLogin(matched);
+
+  return { success: true, user: matched };
+}
+
+// --------------------------------------------------------------------
+// 3. USER LOGIN & ACTIVITY TRACKING API
 // --------------------------------------------------------------------
 
 /**

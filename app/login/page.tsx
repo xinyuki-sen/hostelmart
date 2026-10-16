@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import { recordUserLogin } from '@/lib/dataStore';
+import { recordUserLogin, registerStudentAccount, authenticateStudent } from '@/lib/dataStore';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,30 +22,65 @@ export default function LoginPage() {
   const [adminUsername, setAdminUsername] = useState('AdminA');
   const [adminPassword, setAdminPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const handleStudentSubmit = (e: React.FormEvent) => {
+  const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setSuccessMsg(null);
 
-    const cleanUsername = username.trim();
-    if (!cleanUsername || !password) {
-      setErrorMsg('Username and password are required.');
-      return;
+    if (isRegisterMode) {
+      // 1. REGISTRATION MODE: Save student into database
+      const res = await registerStudentAccount({
+        username,
+        phone,
+        hostelBlock,
+        roomNumber,
+        password
+      });
+
+      if (!res.success || !res.user) {
+        setErrorMsg(res.error || 'Registration failed. Please check your details.');
+        return;
+      }
+
+      // Establish authenticated session
+      const studentSession = {
+        id: res.user.id,
+        username: res.user.username,
+        phone: res.user.phone,
+        hostelBlock: res.user.hostelBlock,
+        roomNumber: res.user.roomNumber,
+        role: 'user' as const
+      };
+
+      localStorage.setItem('hostelmart_user', JSON.stringify(studentSession));
+      router.push('/');
+    } else {
+      // 2. SIGN IN MODE: Strictly authenticate against database
+      const res = await authenticateStudent({
+        username,
+        password
+      });
+
+      if (!res.success || !res.user) {
+        setErrorMsg(res.error || 'Authentication failed.');
+        return;
+      }
+
+      // Establish authenticated session
+      const studentSession = {
+        id: res.user.id,
+        username: res.user.username,
+        phone: res.user.phone,
+        hostelBlock: res.user.hostelBlock,
+        roomNumber: res.user.roomNumber,
+        role: 'user' as const
+      };
+
+      localStorage.setItem('hostelmart_user', JSON.stringify(studentSession));
+      router.push('/');
     }
-
-    const studentId = `u-${cleanUsername.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-    const studentUser = {
-      id: studentId,
-      username: cleanUsername,
-      phone: phone.trim() || '9876543210',
-      hostelBlock: hostelBlock.trim() || 'Block B',
-      roomNumber: roomNumber.trim() || '101',
-      role: 'user' as const
-    };
-
-    localStorage.setItem('hostelmart_user', JSON.stringify(studentUser));
-    recordUserLogin(studentUser);
-    router.push('/');
   };
 
   const handleAdminSubmit = (e: React.FormEvent) => {
@@ -192,6 +227,12 @@ export default function LoginPage() {
                 />
               </div>
 
+              {successMsg && (
+                <div style={{ padding: '10px 14px', background: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', borderRadius: 8, color: '#34d399', fontSize: '0.82rem', marginBottom: 16 }}>
+                  {successMsg}
+                </div>
+              )}
+
               <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px', marginTop: 8 }}>
                 {isRegisterMode ? '✨ Create Account & Browse' : '🚀 Sign In to HostelMart'}
               </button>
@@ -199,10 +240,14 @@ export default function LoginPage() {
               <div style={{ textAlign: 'center', marginTop: 16 }}>
                 <button 
                   type="button" 
-                  style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 600 }}
-                  onClick={() => setIsRegisterMode(!isRegisterMode)}
+                  style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: '0.82rem', cursor: 'pointer', fontWeight: 600 }}
+                  onClick={() => {
+                    setIsRegisterMode(!isRegisterMode);
+                    setErrorMsg(null);
+                    setSuccessMsg(null);
+                  }}
                 >
-                  {isRegisterMode ? 'Already have an account? Sign in' : "Don't have an account? Register now"}
+                  {isRegisterMode ? 'Already have an account? Sign In' : "Don't have an account? Register Now →"}
                 </button>
               </div>
             </form>
