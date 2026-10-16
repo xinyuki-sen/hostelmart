@@ -106,24 +106,42 @@ export function getCloudSyncInfo(): CloudSyncInfo {
 export async function getStoredListings(): Promise<Listing[]> {
   if (typeof window === 'undefined') return [];
 
+  let localListings: Listing[] = [];
   try {
     const raw = localStorage.getItem(LISTINGS_STORAGE_KEY);
     if (raw) {
       const parsed: Listing[] = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        // Strip out any previously seeded demo items
-        const clean = parsed.filter(item => !DEMO_LISTING_IDS.has(item.id));
-        if (clean.length !== parsed.length) {
-          saveListingsToLocal(clean);
-        }
-        return clean;
+        localListings = parsed.filter(item => !DEMO_LISTING_IDS.has(item.id));
       }
     }
   } catch (err) {
     console.warn('[HostelMart] Failed to read from localStorage:', err);
   }
 
-  return [];
+  // Cross-Device Server Sync: Fetch shared items from server and merge into local view
+  try {
+    const res = await fetch('/api/listings', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.listings) && data.listings.length > 0) {
+        const mergedMap = new Map<string, Listing>();
+        data.listings.forEach((item: Listing) => {
+          if (!DEMO_LISTING_IDS.has(item.id)) mergedMap.set(item.id, item);
+        });
+        localListings.forEach((item: Listing) => {
+          mergedMap.set(item.id, item);
+        });
+        const combined = Array.from(mergedMap.values());
+        if (combined.length !== localListings.length) {
+          saveListingsToLocal(combined);
+        }
+        return combined;
+      }
+    }
+  } catch {}
+
+  return localListings;
 }
 
 function saveListingsToLocal(listings: Listing[]): void {
@@ -182,7 +200,7 @@ export async function createListing(item: {
     condition: item.condition,
     category: item.category,
     images: item.images && item.images.length > 0 ? item.images : [fallbackImage],
-    status: 'pending', // Awaiting Admin Approval
+    status: 'active', // AUTO-APPROVE MODE: Immediately active on live campus marketplace!
     timeAgo: 'Just now',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -190,6 +208,15 @@ export async function createListing(item: {
 
   const updated = [newListing, ...currentListings];
   saveListingsToLocal(updated);
+
+  // Broadcast to shared server API so other devices and your friends see it instantly
+  try {
+    fetch('/api/listings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newListing)
+    }).catch(() => {});
+  } catch {}
 
   // Sync with Supabase asynchronously if configured
   if (hasValidSupabase()) {
@@ -366,6 +393,12 @@ export async function deleteListing(id: string, requesterUsername?: string): Pro
 
   const updated = listings.filter(item => item.id !== id);
   saveListingsToLocal(updated);
+
+  // Delete from shared server API
+  try {
+    fetch(`/api/listings?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
+  } catch {}
+
   return updated;
 }
 
@@ -678,23 +711,42 @@ export function getTrackedUsers(): UserAuditRecord[] {
 export async function getStoredISORequests(): Promise<ISORequest[]> {
   if (typeof window === 'undefined') return [];
 
+  let localRequests: ISORequest[] = [];
   try {
     const raw = localStorage.getItem(ISO_STORAGE_KEY);
     if (raw) {
       const parsed: ISORequest[] = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        const clean = parsed.filter(item => !DEMO_ISO_IDS.has(item.id));
-        if (clean.length !== parsed.length) {
-          saveISOToLocal(clean);
-        }
-        return clean;
+        localRequests = parsed.filter(item => !DEMO_ISO_IDS.has(item.id));
       }
     }
   } catch (err) {
     console.warn('[HostelMart] Failed to read ISO requests:', err);
   }
 
-  return [];
+  // Cross-device ISO server sync
+  try {
+    const res = await fetch('/api/iso', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.requests) && data.requests.length > 0) {
+        const mergedMap = new Map<string, ISORequest>();
+        data.requests.forEach((r: ISORequest) => {
+          if (!DEMO_ISO_IDS.has(r.id)) mergedMap.set(r.id, r);
+        });
+        localRequests.forEach((r: ISORequest) => {
+          mergedMap.set(r.id, r);
+        });
+        const combined = Array.from(mergedMap.values());
+        if (combined.length !== localRequests.length) {
+          saveISOToLocal(combined);
+        }
+        return combined;
+      }
+    }
+  } catch {}
+
+  return localRequests;
 }
 
 function saveISOToLocal(requests: ISORequest[]): void {
@@ -731,6 +783,16 @@ export async function createISORequest(req: {
 
   const updated = [newReq, ...current];
   saveISOToLocal(updated);
+
+  // Sync to shared server API
+  try {
+    fetch('/api/iso', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newReq)
+    }).catch(() => {});
+  } catch {}
+
   return newReq;
 }
 
@@ -741,6 +803,11 @@ export async function deleteISORequest(id: string): Promise<ISORequest[]> {
   const current = await getStoredISORequests();
   const updated = current.filter(item => item.id !== id);
   saveISOToLocal(updated);
+
+  try {
+    fetch(`/api/iso?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
+  } catch {}
+
   return updated;
 }
 

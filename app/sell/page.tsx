@@ -115,7 +115,7 @@ export default function SellPage() {
         sellerId: currentUser.id || `u-${currentUser.username}`
       });
 
-      showToast('🚀 Listing submitted! Successfully queued in Supervisor Moderation Hub.');
+      showToast('🚀 Listing is LIVE on the marketplace! Anyone on campus can now view and contact you.');
       setTimeout(() => {
         router.push('/');
       }, 1200);
