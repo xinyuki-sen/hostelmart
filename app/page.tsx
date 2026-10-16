@@ -9,6 +9,7 @@ import {
   getStoredListings, 
   getStoredISORequests, 
   createISORequest, 
+  deleteISORequest,
   subscribeToStore,
   SEED_LISTINGS,
   SEED_ISO 
@@ -106,6 +107,14 @@ export default function HomePage() {
     showToast('🎉 Wanted request posted live to ISO Board!');
     setShowIsoModal(false);
     setIsoTitle('');
+  };
+
+  const handleDeleteIso = async (id: string) => {
+    if (confirm('Are you sure you want to remove this wanted request?')) {
+      await deleteISORequest(id);
+      showToast('Wanted request removed.');
+      loadData();
+    }
   };
 
   const toggleHeart = (id: string, e: React.MouseEvent) => {
@@ -469,9 +478,26 @@ export default function HomePage() {
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>📍 Requested by: {req.requesterName} ({req.location})</div>
 
                       <div style={{ marginTop: 'auto', paddingTop: 10 }}>
-                        <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn btn-whatsapp" style={{ width: '100%' }}>
-                          <span>💬 I Have This! Message</span>
-                        </a>
+                        {user && req.requesterName.trim().toLowerCase() === user.username.trim().toLowerCase() ? (
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <div style={{ flex: 1, padding: '8px 10px', background: 'rgba(168, 85, 247, 0.15)', borderRadius: 6, color: '#d8b4fe', fontSize: '0.78rem', textAlign: 'center', fontWeight: 600 }}>
+                              ✨ Your Request
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={() => handleDeleteIso(req.id)}
+                              className="btn btn-secondary" 
+                              style={{ padding: '8px 12px', fontSize: '0.78rem', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+                              title="Delete your wanted request"
+                            >
+                              🗑️ Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn btn-whatsapp" style={{ width: '100%' }}>
+                            <span>💬 I Have This! Message</span>
+                          </a>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -482,33 +508,76 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* 3. Right Sidebar */}
+      {/* 3. Right Sidebar (LIVE Dynamic Trends from Marketplace Data) */}
       <aside className="chrono-right-drawer">
         <div className="insights-box">
           <div className="insights-header">
-            <span>🔥 Campus Trends</span>
+            <span>🔥 Live Campus Trends</span>
           </div>
-          <div className="trending-item">
-            <div>
-              <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>Electric Kettles</div>
-              <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Avg sell time: 4 hours</div>
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>High</span>
-          </div>
-          <div className="trending-item">
-            <div>
-              <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>Scientific Calculators</div>
-              <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>2 students looking</div>
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b' }}>Wanted</span>
-          </div>
-          <div className="trending-item">
-            <div>
-              <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>Mountain Bicycles</div>
-              <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Active trades</div>
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa' }}>Active</span>
-          </div>
+
+          {(() => {
+            const activeMarketListings = listings.filter(i => i.status === 'active' || i.status === 'sold');
+            const categoryCounts: Record<string, number> = {};
+            activeMarketListings.forEach(item => {
+              categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+            });
+
+            const categoryNames: Record<string, string> = {
+              room_essentials: 'Room Essentials',
+              electronics: 'Electronics',
+              books_academics: 'Books & Academics',
+              mobility_fitness: 'Cycles & Fitness',
+              clothing_fashion: 'Apparel',
+              other: 'General Items'
+            };
+
+            const topCategories = Object.entries(categoryCounts)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 3);
+
+            if (activeMarketListings.length === 0 && isoRequests.length === 0) {
+              return (
+                <div style={{ padding: '10px 0', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4 }}>
+                  No campus listings yet. Be the first to post an item or request!
+                </div>
+              );
+            }
+
+            return (
+              <>
+                {topCategories.map(([catKey, count]) => (
+                  <div key={catKey} className="trending-item">
+                    <div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: 12 }}>
+                        {categoryNames[catKey] || catKey}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                        {count} {count === 1 ? 'item' : 'items'} listed
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#10b981' }}>Active</span>
+                  </div>
+                ))}
+
+                {isoRequests.slice(0, 2).map(req => (
+                  <div key={req.id} className="trending-item">
+                    <div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: 12 }}>
+                        {req.title}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Budget: ₹{req.budget}</div>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b' }}>Wanted</span>
+                  </div>
+                ))}
+
+                <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-dim)' }}>
+                  <span>Live Items: <strong style={{ color: '#60a5fa' }}>{activeMarketListings.length}</strong></span>
+                  <span>Wanted: <strong style={{ color: '#c084fc' }}>{isoRequests.length}</strong></span>
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         <div className="insights-box" style={{ background: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
@@ -626,22 +695,37 @@ export default function HomePage() {
               </div>
 
               <div style={{ marginTop: 18 }}>
-                <a 
-                  href={buildWhatsAppLink({
-                    phone: selectedListing.sellerPhone,
-                    title: selectedListing.title,
-                    price: selectedListing.price,
-                    isNegotiable: selectedListing.isNegotiable,
-                    hostelBlock: selectedListing.hostelBlock,
-                    roomNumber: selectedListing.roomNumber
-                  })}
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="btn btn-whatsapp" 
-                  style={{ width: '100%', padding: 13, fontSize: '0.95rem' }}
-                >
-                  <span>💬 Bargain / Contact on WhatsApp</span>
-                </a>
+                {user && selectedListing.sellerName.trim().toLowerCase() === user.username.trim().toLowerCase() ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ padding: '10px 14px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 8, color: '#93c5fd', fontSize: '0.85rem', textAlign: 'center' }}>
+                      📦 <strong>This is your listing</strong> (Interested buyers will contact your WhatsApp)
+                    </div>
+                    <Link 
+                      href="/my-ads" 
+                      className="btn btn-primary" 
+                      style={{ width: '100%', padding: 12, textAlign: 'center', fontSize: '0.9rem' }}
+                    >
+                      ⚙️ Manage in &ldquo;My Listed Ads&rdquo; →
+                    </Link>
+                  </div>
+                ) : (
+                  <a 
+                    href={buildWhatsAppLink({
+                      phone: selectedListing.sellerPhone,
+                      title: selectedListing.title,
+                      price: selectedListing.price,
+                      isNegotiable: selectedListing.isNegotiable,
+                      hostelBlock: selectedListing.hostelBlock,
+                      roomNumber: selectedListing.roomNumber
+                    })}
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="btn btn-whatsapp" 
+                    style={{ width: '100%', padding: 13, fontSize: '0.95rem' }}
+                  >
+                    <span>💬 Bargain / Contact on WhatsApp</span>
+                  </a>
+                )}
               </div>
             </div>
           </div>

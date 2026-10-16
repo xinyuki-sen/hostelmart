@@ -3,12 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateResearchCsv, downloadCsvFile } from '@/lib/exportCsv';
-import type { Listing } from '@/types';
+import type { Listing, ISORequest } from '@/types';
 import { 
   getStoredListings, 
   updateListingStatus, 
   updateListingAdminNote, 
   deleteListing,
+  getStoredISORequests,
+  deleteISORequest,
   getTrackedUsers,
   recordUserLogin,
   subscribeToStore,
@@ -23,16 +25,19 @@ export default function AdminHubPage() {
   const [adminUsername, setAdminUsername] = useState('AdminA');
 
   const [adminListings, setAdminListings] = useState<Listing[]>([]);
+  const [isoRequests, setIsoRequests] = useState<ISORequest[]>([]);
   const [trackedUsers, setTrackedUsers] = useState<UserAuditRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'all'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'iso' | 'users' | 'all'>('pending');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    const [listings, users] = await Promise.all([
+    const [listings, iso, users] = await Promise.all([
       getStoredListings(),
+      getStoredISORequests(),
       Promise.resolve(getTrackedUsers())
     ]);
     setAdminListings(listings);
+    setIsoRequests(iso);
     setTrackedUsers(users);
   }, []);
 
@@ -103,6 +108,14 @@ export default function AdminHubPage() {
       const updated = await deleteListing(id, 'AdminA');
       setAdminListings(updated);
       showToast('Item deleted by Supervisor.');
+    }
+  };
+
+  const handleDeleteIso = async (id: string) => {
+    if (confirm('Remove this wanted request permanently from the board?')) {
+      const updated = await deleteISORequest(id);
+      setIsoRequests(updated);
+      showToast('Wanted request removed by Supervisor.');
     }
   };
 
@@ -186,7 +199,7 @@ export default function AdminHubPage() {
               </span>
             </div>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-dim)', marginTop: 4 }}>
-              Dedicated supervisor panel: Review & approve student items, verify identity, and track student logins
+              Dedicated supervisor panel: Review & approve items, remove wanted requests, and track student logins
             </p>
           </div>
 
@@ -227,16 +240,16 @@ export default function AdminHubPage() {
           </div>
 
           <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', textAlign: 'center' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Tracked Students</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#a78bfa', marginTop: 2 }}>
-              {trackedUsers.filter(u => u.role === 'user').length}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Wanted Requests</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#c084fc', marginTop: 2 }}>
+              {isoRequests.length}
             </div>
           </div>
 
           <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', textAlign: 'center' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Items Marked Sold</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#34d399', marginTop: 2 }}>
-              {soldItems.length}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Tracked Students</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#a78bfa', marginTop: 2 }}>
+              {trackedUsers.filter(u => u.role === 'user').length}
             </div>
           </div>
         </div>
@@ -251,6 +264,16 @@ export default function AdminHubPage() {
           >
             <span>📥</span>
             <span>Approval Queue ({pendingItems.length})</span>
+          </button>
+
+          <button 
+            type="button" 
+            className={`btn ${activeTab === 'iso' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}
+            onClick={() => setActiveTab('iso')}
+          >
+            <span>🔍</span>
+            <span>Wanted Requests ({isoRequests.length})</span>
           </button>
 
           <button 
@@ -372,7 +395,71 @@ export default function AdminHubPage() {
           </div>
         )}
 
-        {/* TAB 2: Student Login & Activity Tracking */}
+        {/* TAB 2: Wanted (ISO) Board Moderation */}
+        {activeTab === 'iso' && (
+          <div className="modal-card" style={{ maxWidth: '100%', padding: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                  🔍 Wanted Board Requests Management
+                </h2>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: 2 }}>
+                  Supervisors can moderate or remove spam and fulfilled wanted requests
+                </p>
+              </div>
+              <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc' }}>
+                {isoRequests.length} Active Requests
+              </span>
+            </div>
+
+            {isoRequests.length === 0 ? (
+              <div style={{ padding: '40px', background: 'var(--bg-app)', borderRadius: 8, textAlign: 'center', color: 'var(--text-dim)' }}>
+                No active wanted requests posted on the board.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {isoRequests.map(req => {
+                  const waRequesterLink = `https://wa.me/91${req.requesterPhone || '9876543210'}?text=${encodeURIComponent(`Hi @${req.requesterName}, this is Hostel Supervisor contacting you regarding your wanted request "${req.title}".`)}`;
+
+                  return (
+                    <div 
+                      key={req.id} 
+                      className="chrono-card" 
+                      style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)' }}>{req.title}</span>
+                          <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', fontSize: '0.72rem' }}>WANTED</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#34d399' }}>Budget: ₹{req.budget}</span>
+                        </div>
+
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: 4 }}>
+                          👤 Requested by: <strong>@{req.requesterName}</strong> ({req.location}) &nbsp;|&nbsp; 
+                          📞 <a href={waRequesterLink} target="_blank" rel="noopener noreferrer" style={{ color: '#34d399', textDecoration: 'underline' }}>{req.requesterPhone} (WhatsApp)</a> &nbsp;|&nbsp;
+                          ⏰ Urgency: {req.urgency}
+                        </div>
+                      </div>
+
+                      <button 
+                        type="button" 
+                        onClick={() => handleDeleteIso(req.id)}
+                        className="btn btn-secondary" 
+                        style={{ padding: '8px 14px', fontSize: '0.82rem', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', gap: 6 }}
+                        title="Remove request from board"
+                      >
+                        <span>🗑️</span>
+                        <span>Remove Request</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: Student Login & Activity Tracking */}
         {activeTab === 'users' && (
           <div className="modal-card" style={{ maxWidth: '100%', padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -447,7 +534,7 @@ export default function AdminHubPage() {
           </div>
         )}
 
-        {/* TAB 3: All Listings & Research Ledger */}
+        {/* TAB 4: All Listings & Research Ledger */}
         {activeTab === 'all' && (
           <div className="modal-card" style={{ maxWidth: '100%', padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

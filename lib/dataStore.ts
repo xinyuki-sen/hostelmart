@@ -572,6 +572,16 @@ export async function createISORequest(req: {
   return newReq;
 }
 
+/**
+ * Delete an ISO / Wanted Request (Admin or owner removal)
+ */
+export async function deleteISORequest(id: string): Promise<ISORequest[]> {
+  const current = await getStoredISORequests();
+  const updated = current.filter(item => item.id !== id);
+  saveISOToLocal(updated);
+  return updated;
+}
+
 // --------------------------------------------------------------------
 // 4. REACTIVITY SUBSCRIPTION
 // --------------------------------------------------------------------
