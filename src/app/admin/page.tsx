@@ -3,7 +3,102 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateResearchCsv, downloadCsvFile } from '@/lib/exportCsv';
+import type { Listing, ISO'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { generateResearchCsv, downloadCsvFile } from '@/lib/exportCsv';
 import type { Listing, ISORequest } from '@/types';
+import { 
+  getStoredListings, 
+  updateListingStatus, 
+  updateListingAdminNote, 
+  deleteListing,
+  getStoredISORequests,
+  deleteISORequest,
+  getTrackedUsers,
+  recordUserLogin,
+  getCloudSyncInfo,
+  saveCustomSupabaseConfig,
+  clearCustomSupabaseConfig,
+  getCustomSupabaseConfig,
+  subscribeToStore,
+  type UserAuditRecord 
+} from '@/lib/dataStore';
+
+export default function AdminHubPage() {
+  const router = useRouter();
+  const [isAdminAuth, setIsAdminAuth] = useState(false);
+  const [passphrase, setPassphrase] = useState('');
+  const [authError, setAuthError] = useState(false);
+  const [adminUsername, setAdminUsername] = useState('AdminA');
+
+  const [adminListings, setAdminListings] = useState<Listing[]>([]);
+  const [isoRequests, setIsoRequests] = useState<ISORequest[]>([]);
+  const [trackedUsers, setTrackedUsers] = useState<UserAuditRecord[]>([]);
+  const [activeTab, setActiveTab] = useState<'pending' | 'iso' | 'users' | 'all' | 'cloud'>('pending');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // Cloud Config State
+  const [customUrl, setCustomUrl] = useState('');
+  const [customKey, setCustomKey] = useState('');
+
+  const loadData = useCallback(async () => {
+    const [listings, iso, users] = await Promise.all([
+      getStoredListings(),
+      getStoredISORequests(),
+      Promise.resolve(getTrackedUsers())
+    ]);
+    setAdminListings(listings);
+    setIsoRequests(iso);
+    setTrackedUsers(users);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('hostelmart_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u.role === 'admin') {
+          setIsAdminAuth(true);
+          if (u.username) setAdminUsername(u.username);
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    loadData();
+    const unsubscribe = subscribeToStore(() => {
+      loadData();
+    });
+
+    return () => unsubscribe();
+  }, [loadData]);
+
+  const handleUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passphrase === '123456' || passphrase === 'AdminPass@2026!') {
+      setIsAdminAuth(true);
+      setAuthError(false);
+      const adminUser = { 
+        id: 'admin-local',
+        role: 'admin' as const, 
+        username: adminUsername,
+        hostelBlock: 'Supervisor Office',
+        roomNumber: '101'
+      };
+      localStorage.setItem('hostelmart_user', JSON.stringify(adminUser));
+      recordUserLogin(adminUser);
+      loadData();
+    } else {
+      setAuthError(true);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('hostelmart_user');
+    setIsAdminAuth(false);Request } from '@/types';
 import { 
   getStoredListings, 
   updateListingStatus, 
